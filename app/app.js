@@ -5,8 +5,16 @@ const path = require('path');
 const { exec, execFile } = require('child_process');
 
 // ─── Config ───────────────────────────────────────────────────────────────────
+function getEnvPath() {
+  if (process.env.ELECTRON_PACKAGED) {
+    const { app } = require('electron');
+    return require('path').join(app.getPath('userData'), '.env');
+  }
+  return path.join(__dirname, '.env');
+}
+
 function loadEnv() {
-  const envPath = path.join(__dirname, '.env');
+  const envPath = getEnvPath();
   if (!fs.existsSync(envPath)) return {};
   const env = {};
   for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
@@ -68,7 +76,13 @@ function serveHtml(res) {
 
 // ─── Defaults ─────────────────────────────────────────────────────────────────
 function handleDefaults(res) {
-  const base = path.join(__dirname, '..', 'Dreams');
+  let base;
+  if (process.env.ELECTRON_PACKAGED) {
+    const { app } = require('electron');
+    base = path.join(app.getPath('documents'), 'Dreams');
+  } else {
+    base = path.join(__dirname, '..', 'Dreams');
+  }
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({
     inputDir:  path.join(base, 'Audio Recordings'),
@@ -77,7 +91,14 @@ function handleDefaults(res) {
 }
 
 // ─── Browse ───────────────────────────────────────────────────────────────────
-function handleBrowse(res) {
+async function handleBrowse(res) {
+  if (process.env.ELECTRON_RUN) {
+    const { dialog } = require('electron');
+    const result = await dialog.showOpenDialog({ properties: ['openDirectory'] });
+    const chosen = (!result.canceled && result.filePaths.length) ? result.filePaths[0] : null;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ path: chosen }));
+  }
   let cmd;
   if (process.platform === 'darwin') {
     cmd = `osascript -e 'POSIX path of (choose folder)'`;
@@ -157,6 +178,8 @@ function handleStop(res) {
 
 // ─── Process (SSE stream) ─────────────────────────────────────────────────────
 async function handleProcess(req, res) {
+  req.on('close', () => { stopFlag = true; });
+
   const body = JSON.parse(await readBody(req));
   const { inputDir, outputDir, hints = '', summary = true } = body;
 
@@ -471,6 +494,10 @@ function readBody(req) {
 // ─── Start ────────────────────────────────────────────────────────────────────
 server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
+    if (process.env.ELECTRON_RUN) {
+      process.emit('server-error', err);
+      return;
+    }
     console.error('ERROR: Port 3000 already in use — is Dream Archive already running?');
     process.exit(1);
   }
@@ -478,7 +505,12 @@ server.on('error', (err) => {
 });
 
 server.listen(PORT, '127.0.0.1', () => {
-  const url = `http://localhost:${PORT}`;
-  console.log(`\n  🌙  Conn's Dream Archive\n  ${url}\n`);
-  console.log('  Close this window to stop the server.\n');
+  console.log(`\n  🌙  Conn's Dream Archive\n  http://localhost:${PORT}\n`);
+  if (!process.env.ELECTRON_RUN) console.log('  Close this window to stop the server.\n');
+  if (process.env.ELECTRON_RUN) process.emit('server-ready');
 });
+
+module.exports = server;
+
+process.on('SIGTERM', () => server.close(() => process.exit(0)));
+process.on('SIGINT',  () => server.close(() => process.exit(0)));

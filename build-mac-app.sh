@@ -1,3 +1,5 @@
+# RETIRED — use `npm run dist:mac` instead (electron-builder).
+# This script built the old shell-launcher .app bundle and is no longer needed.
 #!/bin/bash
 set -euo pipefail
 

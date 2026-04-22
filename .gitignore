@@ -3,3 +3,5 @@ Dreams/Audio Recordings/
 node_modules/
 *.icns
 Dream Archive.app/
+build/
+dist/

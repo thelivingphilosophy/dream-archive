@@ -1,0 +1,56 @@
+{
+  "name": "conns-dream-archive",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist:mac": "electron-builder --mac --publish never",
+    "dist:win": "electron-builder --win --publish never"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.0.0",
+    "sharp": "^0.34.5"
+  },
+  "build": {
+    "appId": "com.conndreams.dreamarchive",
+    "productName": "Dream Archive",
+    "files": [
+      "main.js",
+      "app/**/*",
+      "!app/.env"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "AppIcon.png",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "entitlements.mac.plist",
+      "entitlementsInherit": "entitlements.mac.plist"
+    },
+    "win": {
+      "icon": "AppIcon.png",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "perMachine": false,
+      "oneClick": false
+    }
+  }
+}
