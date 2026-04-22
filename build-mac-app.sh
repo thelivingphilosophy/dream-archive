@@ -176,36 +176,127 @@ LAUNCHER
 
 chmod +x "$MACOS_DIR/launcher"
 
-# ── App Icon (Python + iconutil) ────────────────────────────────────────────
-ICON_PY=$(mktemp /tmp/gen_icon_XXXXXX.py)
+# ── App Icon (iconutil) ──────────────────────────────────────────────────────
 ICONSET_DIR=$(mktemp -d /tmp/AppIcon_XXXXXX.iconset)
-MASTER_PNG=$(mktemp /tmp/icon_master_XXXXXX.png)
+MASTER_PNG="$SCRIPT_DIR/AppIcon.png"
 
-cat > "$ICON_PY" << 'PYEOF'
-import struct, zlib, sys
+if [ ! -f "$MASTER_PNG" ]; then
+  echo "Error: AppIcon.png not found at $MASTER_PNG"
+  exit 1
+fi
+
+: << 'PYEOF'  # kept for reference — icon is now a committed PNG (AppIcon.png)
+import struct, zlib, sys, math
 
 out_path = sys.argv[1]
-
 W, H = 1024, 1024
-img = bytearray(W * H * 4)
+CX, CY = W // 2, H // 2
 
-BG = (4, 5, 12)
-for i in range(W * H):
-    img[i*4], img[i*4+1], img[i*4+2], img[i*4+3] = BG[0], BG[1], BG[2], 255
+# Background: #04050c
+img = bytearray(b'\x04\x05\x0c\xff' * (W * H))
 
-GOLD = (196, 144, 96)
-cx, cy, r_outer = W//2, H//2, 340
-r_inner = 265
-offset_x = 110
+def put(x, y, r, g, b, a):
+    if x < 0 or x >= W or y < 0 or y >= H or a <= 0: return
+    idx = (y * W + x) * 4
+    a = min(1.0, a)
+    img[idx]   = int(img[idx]   + (r - img[idx])   * a)
+    img[idx+1] = int(img[idx+1] + (g - img[idx+1]) * a)
+    img[idx+2] = int(img[idx+2] + (b - img[idx+2]) * a)
 
-def in_circle(px, py, ox, oy, r):
-    return (px - ox)**2 + (py - oy)**2 <= r**2
+GOLD  = (196, 144, 96)
+GOLD2 = (224, 184, 128)
 
-for y in range(H):
-    for x in range(W):
-        if in_circle(x, y, cx, cy, r_outer) and not in_circle(x, y, cx + offset_x, cy, r_inner):
-            i = (y * W + x) * 4
-            img[i], img[i+1], img[i+2], img[i+3] = GOLD[0], GOLD[1], GOLD[2], 255
+def circle(cx, cy, rad, w, col, op=1.0, dash=0):
+    cr, cg, cb = col
+    hw = w / 2.0
+    y0 = max(0, int(cy - rad - hw - 2))
+    y1 = min(H - 1, int(cy + rad + hw + 2))
+    for y in range(y0, y1 + 1):
+        dy = y - cy
+        out_sq = (rad + hw + 1) ** 2
+        inn_sq = max(0.0, (rad - hw - 1) ** 2)
+        if dy * dy > out_sq: continue
+        xo = math.sqrt(out_sq - dy * dy)
+        xi = math.sqrt(inn_sq - dy * dy) if dy * dy < inn_sq else 0.0
+        for xa, xb in [
+            (max(0, int(cx - xo) - 1), min(W - 1, int(cx - xi) + 2)),
+            (max(0, int(cx + xi) - 1), min(W - 1, int(cx + xo) + 2)),
+        ]:
+            for x in range(xa, xb + 1):
+                dx = x - cx
+                d = abs(math.sqrt(dx * dx + dy * dy) - rad)
+                a = max(0.0, 1.0 - max(0.0, d - hw)) * op
+                if a > 0:
+                    if dash:
+                        ang = math.atan2(dy, dx) % (2 * math.pi)
+                        if int(ang / (2 * math.pi / dash)) % 2 == 0: continue
+                    put(x, y, cr, cg, cb, a)
+
+def line(x1, y1, x2, y2, w, col, op=1.0):
+    cr, cg, cb = col
+    hw = w / 2.0
+    ddx = x2 - x1; ddy = y2 - y1
+    L2 = ddx * ddx + ddy * ddy
+    if L2 == 0: return
+    L = math.sqrt(L2)
+    margin = hw + 1.5
+    ly0 = max(0, int(min(y1, y2) - margin))
+    ly1 = min(H - 1, int(max(y1, y2) + margin))
+    for y in range(ly0, ly1 + 1):
+        if ddy != 0:
+            xc = x1 + (y - y1) * ddx / ddy
+            xs = margin * L / abs(ddy)
+            xa = max(0, int(xc - xs) - 1)
+            xb = min(W - 1, int(xc + xs) + 2)
+        else:
+            xa = max(0, int(min(x1, x2) - margin))
+            xb = min(W - 1, int(max(x1, x2) + margin))
+        for x in range(xa, xb + 1):
+            t = max(0.0, min(1.0, ((x - x1) * ddx + (y - y1) * ddy) / L2))
+            px = x1 + t * ddx; py = y1 + t * ddy
+            d = math.sqrt((x - px) ** 2 + (y - py) ** 2)
+            a = max(0.0, 1.0 - max(0.0, d - hw)) * op
+            if a > 0: put(x, y, cr, cg, cb, a)
+
+def dot(cx, cy, rad, col, op=1.0):
+    cr, cg, cb = col
+    for y in range(max(0, int(cy - rad - 1)), min(H, int(cy + rad + 2))):
+        for x in range(max(0, int(cx - rad - 1)), min(W, int(cx + rad + 2))):
+            d = math.sqrt((x - cx) ** 2 + (y - cy) ** 2)
+            a = max(0.0, 1.0 - max(0.0, d - rad)) * op
+            if a > 0: put(x, y, cr, cg, cb, a)
+
+# Concentric circles (mirroring the bg-sigil in the HTML)
+circle(CX, CY, 380, 1.8, GOLD2, op=0.9)
+circle(CX, CY, 320, 1.2, GOLD,  op=0.55, dash=14)
+circle(CX, CY, 240, 1.8, GOLD2, op=0.85)
+circle(CX, CY, 160, 1.2, GOLD,  op=0.55, dash=12)
+circle(CX, CY,  80, 1.8, GOLD,  op=0.8)
+
+# Cardinal axes
+line(CX, CY - 380, CX, CY + 380, 1.0, GOLD, op=0.55)
+line(CX - 380, CY, CX + 380, CY, 1.0, GOLD, op=0.55)
+
+# Diagonal axes
+D = int(380 / math.sqrt(2))
+line(CX - D, CY - D, CX + D, CY + D, 0.8, GOLD, op=0.4)
+line(CX + D, CY - D, CX - D, CY + D, 0.8, GOLD, op=0.4)
+
+# Hexagram — two overlapping triangles (Star of Solomon)
+# Coordinates scaled 2× from the 400px SVG viewBox, centred at 512
+TU = [(512, 152), (858, 692), (166, 692)]   # apex up
+TD = [(512, 872), (166, 332), (858, 332)]   # apex down
+for pts in (TU, TD):
+    for i in range(3):
+        ax, ay = pts[i]; bx, by = pts[(i + 1) % 3]
+        line(ax, ay, bx, by, 1.2, GOLD2, op=0.72)
+
+# Cardinal dots at outer-circle intercepts
+for px, py in [(CX, CY - 380), (CX, CY + 380), (CX - 380, CY), (CX + 380, CY)]:
+    dot(px, py, 5, GOLD2, op=0.9)
+
+# Subtle inner glow — the dreaming eye at centre
+dot(CX, CY, 76, GOLD, op=0.09)
 
 def png_chunk(name, data):
     c = zlib.crc32(name + data) & 0xffffffff
@@ -213,7 +304,7 @@ def png_chunk(name, data):
 
 raw = b''
 for y in range(H):
-    raw += b'\x00' + bytes(img[y*W*4:(y+1)*W*4])
+    raw += b'\x00' + bytes(img[y * W * 4:(y + 1) * W * 4])
 
 compressed = zlib.compress(raw, 9)
 png = (
@@ -229,7 +320,6 @@ print(f"Generated {out_path}")
 PYEOF
 
 echo "Generating icon..."
-python3 "$ICON_PY" "$MASTER_PNG"
 
 # FIX #14: generate source PNGs with src_ prefix, then copy with valid iconutil names only
 for SIZE in 16 32 64 128 256 512 1024; do
@@ -252,7 +342,7 @@ cp "$ICONSET_DIR/src_1024.png" "$ICONSET_DIR/icon_512x512@2x.png"
 rm "$ICONSET_DIR"/src_*.png
 
 iconutil -c icns "$ICONSET_DIR" -o "$RES_DIR/AppIcon.icns"
-rm -rf "$ICONSET_DIR" "$MASTER_PNG" "$ICON_PY"
+rm -rf "$ICONSET_DIR"
 echo "Icon generated."
 
 # ── Clear quarantine ────────────────────────────────────────────────────────
