@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Conn Dreams</string>
+
+    <string name="connect_drive">Connect Google Drive</string>
+    <string name="reconnect_drive">Reconnect Google Drive</string>
+    <string name="drive_not_connected">Not connected</string>
+    <string name="drive_connected">Signed in as %1$s</string>
+    <string name="drive_folder_label">Drive folder</string>
+    <string name="drive_folder_default">Conn Dreams — Audio Recordings</string>
+    <string name="pending_uploads">%1$d recording(s) waiting to upload</string>
+    <string name="damaged_files">%1$d damaged recording(s) — tap to clean up</string>
+    <string name="record_test">Record a test dream</string>
+    <string name="stop_recording">Stop recording</string>
+    <string name="beep_cue">Beep on start/stop</string>
+    <string name="haptic_cue">Haptic on start/stop</string>
+    <string name="max_length_label">Max recording length</string>
+    <string name="max_length_15">15 minutes</string>
+    <string name="max_length_30">30 minutes</string>
+    <string name="max_length_60">60 minutes</string>
+    <string name="side_key_hint">Tip: Settings → Advanced features → Side key → Double press → Open app → Conn Dreams. Double-press to start a recording from the lock screen.</string>
+
+    <string name="notif_channel_recording">Recording</string>
+    <string name="notif_channel_upload">Upload</string>
+    <string name="notif_recording_title">Recording dream…</string>
+    <string name="notif_recording_text">%1$s elapsed. Tap Stop to save.</string>
+    <string name="notif_stop_action">Stop</string>
+    <string name="notif_upload_queued">Uploading to Drive…</string>
+    <string name="notif_upload_done">Saved to Drive</string>
+    <string name="notif_upload_failed">Upload failed — will retry</string>
+    <string name="notif_auth_revoked">Google Drive access needed — tap to reconnect</string>
+
+    <string name="widget_description">One-tap dream recorder</string>
+</resources>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ink">#1a1a2e</color>
+    <color name="parchment">#f5f1e8</color>
+    <color name="accent">#8b1e3f</color>
+    <color name="accent_pressed">#6b1730</color>
+    <color name="surface">#ffffff</color>
+    <color name="muted">#6b6b7a</color>
+    <color name="idle">#4a4e69</color>
+    <color name="recording">#c53030</color>
+    <color name="uploading">#d69e2e</color>
+</resources>

@@ -1,0 +1,123 @@
+package com.conndreams.recorder
+
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import androidx.core.app.NotificationCompat
+import androidx.work.Constraints
+import androidx.work.CoroutineWorker
+import androidx.work.NetworkType
+import androidx.work.WorkerParameters
+import com.google.android.gms.auth.UserRecoverableAuthException
+import java.io.File
+
+class DriveUploadWorker(context: Context, params: WorkerParameters) :
+    CoroutineWorker(context, params) {
+
+    override suspend fun doWork(): Result {
+        val path = inputData.getString(KEY_FILE_PATH) ?: return Result.failure()
+        val file = File(path)
+        if (!file.exists()) return Result.success() // already cleaned up
+
+        val prefs = Prefs(applicationContext)
+        val drive = DriveClient(applicationContext)
+        val account = drive.currentAccount()?.account
+            ?: run { notifyAuthNeeded(); return Result.retry() }
+
+        val token = try {
+            drive.getAccessToken(account)
+        } catch (_: UserRecoverableAuthException) {
+            notifyAuthNeeded()
+            return Result.retry()
+        } catch (t: Throwable) {
+            return Result.retry()
+        }
+
+        val folderId = try {
+            prefs.driveFolderId ?: drive.ensureFolder(token, prefs.driveFolderName).also { prefs.driveFolderId = it }
+        } catch (t: Throwable) {
+            return Result.retry()
+        }
+
+        try {
+            drive.uploadFile(token, folderId, file)
+        } catch (t: Throwable) {
+            // If folder was deleted in Drive, the next attempt will recreate it.
+            if (t.message?.contains("notFound") == true) prefs.driveFolderId = null
+            if (runAttemptCount >= 5) notifyFailed()
+            return Result.retry()
+        }
+
+        file.delete()
+        notifyDone()
+        broadcastIdleIfClear()
+        return Result.success()
+    }
+
+    private fun broadcastIdleIfClear() {
+        val pending = File(applicationContext.filesDir, "pending")
+        val stillHasFiles = pending.listFiles()?.any { it.extension == "m4a" } ?: false
+        val state = if (stillHasFiles) RecordingService.STATE_UPLOADING else RecordingService.STATE_IDLE
+        applicationContext.sendBroadcast(
+            Intent(RecordingService.ACTION_STATE_CHANGED)
+                .setPackage(applicationContext.packageName)
+                .putExtra(RecordingService.EXTRA_STATE, state)
+        )
+    }
+
+    private fun notifyDone() {
+        val nm = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val n = NotificationCompat.Builder(applicationContext, RecordingService.CHANNEL_UPLOAD)
+            .setSmallIcon(R.drawable.ic_upload)
+            .setContentTitle(applicationContext.getString(R.string.notif_upload_done))
+            .setAutoCancel(true)
+            .setTimeoutAfter(5000)
+            .build()
+        nm.notify(NOTIF_DONE, n)
+    }
+
+    private fun notifyFailed() {
+        val nm = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val open = PendingIntent.getActivity(
+            applicationContext, 0,
+            Intent(applicationContext, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val n = NotificationCompat.Builder(applicationContext, RecordingService.CHANNEL_UPLOAD)
+            .setSmallIcon(R.drawable.ic_upload)
+            .setContentTitle(applicationContext.getString(R.string.notif_upload_failed))
+            .setContentIntent(open)
+            .setAutoCancel(false)
+            .build()
+        nm.notify(NOTIF_FAILED, n)
+    }
+
+    private fun notifyAuthNeeded() {
+        val nm = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val open = PendingIntent.getActivity(
+            applicationContext, 0,
+            Intent(applicationContext, MainActivity::class.java).putExtra(MainActivity.EXTRA_REQUEST_AUTH, true),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val n = NotificationCompat.Builder(applicationContext, RecordingService.CHANNEL_UPLOAD)
+            .setSmallIcon(R.drawable.ic_upload)
+            .setContentTitle(applicationContext.getString(R.string.notif_auth_revoked))
+            .setContentIntent(open)
+            .setAutoCancel(true)
+            .build()
+        nm.notify(NOTIF_AUTH, n)
+    }
+
+    companion object {
+        const val TAG = "drive-upload"
+        const val KEY_FILE_PATH = "file_path"
+        private const val NOTIF_DONE = 2001
+        private const val NOTIF_FAILED = 2002
+        private const val NOTIF_AUTH = 2003
+
+        fun constraints(): Constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+    }
+}
