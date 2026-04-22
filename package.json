@@ -21,6 +21,7 @@
       "app/**/*",
       "!app/.env"
     ],
+    "afterSign": "scripts/notarize.js",
     "mac": {
       "category": "public.app-category.productivity",
       "icon": "AppIcon.png",
@@ -35,7 +36,7 @@
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "entitlements.mac.plist",
-      "entitlementsInherit": "entitlements.mac.plist",
+      "entitlementsInherit": "entitlements.mac.plist"
     },
     "win": {
       "icon": "AppIcon.png",
@@ -51,7 +52,6 @@
     "nsis": {
       "perMachine": false,
       "oneClick": false
-    },
-    "afterSign": "scripts/notarize.js"
+    }
   }
 }
