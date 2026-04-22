@@ -16,6 +16,45 @@ jobs:
       - name: Build app bundle
         run: bash build-mac-app.sh
 
+      - name: Compile Mach-O launcher wrapper
+        run: |
+          # Apple notarization requires a Mach-O binary as the main executable.
+          # Compile a minimal C stub that exec's the shell script alongside it.
+          cat > /tmp/launcher_stub.c << 'EOF'
+          #include <unistd.h>
+          #include <stdio.h>
+          #include <string.h>
+          #include <mach-o/dyld.h>
+          #include <sys/param.h>
+          #include <libgen.h>
+
+          int main(void) {
+              char self[MAXPATHLEN];
+              uint32_t size = sizeof(self);
+              if (_NSGetExecutablePath(self, &size) != 0) {
+                  fprintf(stderr, "Dream Archive: failed to resolve executable path\n");
+                  return 1;
+              }
+              char dir[MAXPATHLEN];
+              strncpy(dir, self, sizeof(dir));
+              char *d = dirname(dir);
+              char script[MAXPATHLEN];
+              snprintf(script, sizeof(script), "%s/launcher.sh", d);
+              char * const args[] = { "/bin/bash", script, NULL };
+              execv("/bin/bash", args);
+              perror("Dream Archive: execv failed");
+              return 1;
+          }
+          EOF
+
+          clang -o /tmp/launcher_bin /tmp/launcher_stub.c
+
+          # Rename the shell script, drop the compiled binary in its place
+          mv "Dream Archive.app/Contents/MacOS/launcher" "Dream Archive.app/Contents/MacOS/launcher.sh"
+          cp /tmp/launcher_bin "Dream Archive.app/Contents/MacOS/launcher"
+          chmod +x "Dream Archive.app/Contents/MacOS/launcher"
+          chmod +x "Dream Archive.app/Contents/MacOS/launcher.sh"
+
       - name: Import signing certificate
         uses: apple-actions/import-codesign-certs@v3
         with:
