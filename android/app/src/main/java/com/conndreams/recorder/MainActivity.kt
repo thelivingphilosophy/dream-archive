@@ -194,7 +194,7 @@ class MainActivity : AppCompatActivity() {
                 refresh()
             }
         } catch (e: UserRecoverableAuthException) {
-            recoverAuthLauncher.launch(e.intent)
+            e.intent?.let { recoverAuthLauncher.launch(it) }
         } catch (e: Exception) {
             runOnUiThread { Toast.makeText(this, "Drive setup failed: ${e.message}", Toast.LENGTH_LONG).show() }
         }
