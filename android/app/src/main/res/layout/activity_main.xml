@@ -79,6 +79,22 @@
             android:alpha="0.3" />
 
         <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/record_on_launch_switch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/record_on_launch"
+            android:textColor="@color/ink" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/record_on_launch_hint"
+            android:textColor="@color/muted"
+            android:textSize="12sp" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
             android:id="@+id/beep_switch"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

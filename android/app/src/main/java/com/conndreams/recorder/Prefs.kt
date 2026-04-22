@@ -31,6 +31,10 @@ class Prefs(context: Context) {
         get() = sp.getInt(KEY_MAX_LENGTH, 15)
         set(v) = sp.edit().putInt(KEY_MAX_LENGTH, v).apply()
 
+    var recordOnLaunch: Boolean
+        get() = sp.getBoolean(KEY_RECORD_ON_LAUNCH, true)
+        set(v) = sp.edit().putBoolean(KEY_RECORD_ON_LAUNCH, v).apply()
+
     companion object {
         private const val KEY_ACCOUNT_EMAIL = "account_email"
         private const val KEY_FOLDER_ID = "drive_folder_id"
@@ -38,6 +42,7 @@ class Prefs(context: Context) {
         private const val KEY_BEEP = "beep_enabled"
         private const val KEY_HAPTIC = "haptic_enabled"
         private const val KEY_MAX_LENGTH = "max_length_minutes"
+        private const val KEY_RECORD_ON_LAUNCH = "record_on_launch"
         const val DEFAULT_FOLDER_NAME = "Conn Dreams — Audio Recordings"
     }
 }

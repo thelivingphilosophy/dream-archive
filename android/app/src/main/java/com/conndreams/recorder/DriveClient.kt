@@ -2,7 +2,6 @@ package com.conndreams.recorder
 
 import android.accounts.Account
 import android.content.Context
-import android.content.Intent
 import com.google.android.gms.auth.GoogleAuthUtil
 import com.google.android.gms.auth.UserRecoverableAuthException
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -18,6 +17,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import java.io.File
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
@@ -69,6 +69,7 @@ class DriveClient(private val context: Context) {
             .header("Authorization", "Bearer $accessToken")
             .build()
         http.newCall(req).execute().use { resp ->
+            throwIfNotFound(resp)
             if (!resp.isSuccessful) throw RuntimeException("find folder failed: ${resp.code} ${resp.message}")
             val body = resp.body?.string().orEmpty()
             val files = JsonParser.parseString(body).asJsonObject.getAsJsonArray("files")
@@ -84,6 +85,7 @@ class DriveClient(private val context: Context) {
             .post(meta.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull()))
             .build()
         http.newCall(req).execute().use { resp ->
+            throwIfNotFound(resp)
             val body = resp.body?.string().orEmpty()
             if (!resp.isSuccessful) throw RuntimeException("create folder failed: ${resp.code} $body")
             return JsonParser.parseString(body).asJsonObject["id"].asString
@@ -91,25 +93,12 @@ class DriveClient(private val context: Context) {
     }
 
     /**
-     * Resumable upload of a .m4a into [folderId]. Returns the created file's ID.
-     * Auto-renames on 409-ish name collisions by appending _2, _3…
+     * Resumable upload of [file] into [folderId]. Returns the created file's ID.
+     * Filenames are pre-uniqued by the recorder (ms-precision timestamp), so we don't
+     * retry on name collision — and Drive allows duplicate names regardless.
      */
     suspend fun uploadFile(accessToken: String, folderId: String, file: File): String = withContext(Dispatchers.IO) {
-        val baseName = file.nameWithoutExtension
-        val ext = file.extension.ifEmpty { "m4a" }
-        var name = file.name
-        for (attempt in 0..5) {
-            try {
-                return@withContext uploadOnce(accessToken, folderId, file, name)
-            } catch (_: NameCollision) {
-                name = "${baseName}_${attempt + 2}.$ext"
-            }
-        }
-        throw RuntimeException("upload failed after retries for $name")
-    }
-
-    private fun uploadOnce(accessToken: String, folderId: String, file: File, uploadName: String): String {
-        val metadata = """{"name":${quote(uploadName)},"parents":["$folderId"]}"""
+        val metadata = """{"name":${quote(file.name)},"parents":["$folderId"]}"""
         val initReq = Request.Builder()
             .url("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable")
             .header("Authorization", "Bearer $accessToken")
@@ -118,28 +107,33 @@ class DriveClient(private val context: Context) {
             .post(metadata.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull()))
             .build()
         val uploadUrl: String = http.newCall(initReq).execute().use { resp ->
+            throwIfNotFound(resp)
             if (!resp.isSuccessful) {
                 val body = resp.body?.string().orEmpty()
-                if (resp.code == 409 || body.contains("\"reason\": \"duplicate\"")) throw NameCollision()
                 throw RuntimeException("resumable init failed: ${resp.code} $body")
             }
             resp.header("Location") ?: throw RuntimeException("no Location header on resumable init")
         }
 
-        val mediaBody: RequestBody = file.asRequestBody()
         val putReq = Request.Builder()
             .url(uploadUrl)
             .header("Authorization", "Bearer $accessToken")
-            .put(mediaBody)
+            .put(file.asRequestBody())
             .build()
         http.newCall(putReq).execute().use { resp ->
+            throwIfNotFound(resp)
             val body = resp.body?.string().orEmpty()
             if (!resp.isSuccessful) throw RuntimeException("upload PUT failed: ${resp.code} $body")
-            return JsonParser.parseString(body).asJsonObject["id"].asString
+            return@withContext JsonParser.parseString(body).asJsonObject["id"].asString
         }
     }
 
-    private class NameCollision : RuntimeException("name collision")
+    /** Thrown when Drive reports 404 — the resource (usually the target folder) is gone. */
+    class NotFoundException(message: String) : RuntimeException(message)
+
+    private fun throwIfNotFound(resp: Response) {
+        if (resp.code == 404) throw NotFoundException("drive 404: ${resp.request.url}")
+    }
 
     private fun quote(s: String): String =
         "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\""

@@ -18,7 +18,7 @@ class DriveUploadWorker(context: Context, params: WorkerParameters) :
     override suspend fun doWork(): Result {
         val path = inputData.getString(KEY_FILE_PATH) ?: return Result.failure()
         val file = File(path)
-        if (!file.exists()) return Result.success() // already cleaned up
+        if (!file.exists()) return Result.success()
 
         val prefs = Prefs(applicationContext)
         val drive = DriveClient(applicationContext)
@@ -30,40 +30,42 @@ class DriveUploadWorker(context: Context, params: WorkerParameters) :
         } catch (_: UserRecoverableAuthException) {
             notifyAuthNeeded()
             return Result.retry()
-        } catch (t: Throwable) {
+        } catch (_: Throwable) {
             return Result.retry()
         }
 
         val folderId = try {
             prefs.driveFolderId ?: drive.ensureFolder(token, prefs.driveFolderName).also { prefs.driveFolderId = it }
-        } catch (t: Throwable) {
+        } catch (_: DriveClient.NotFoundException) {
+            prefs.driveFolderId = null
+            return Result.retry()
+        } catch (_: Throwable) {
             return Result.retry()
         }
 
         try {
             drive.uploadFile(token, folderId, file)
-        } catch (t: Throwable) {
-            // If folder was deleted in Drive, the next attempt will recreate it.
-            if (t.message?.contains("notFound") == true) prefs.driveFolderId = null
+        } catch (_: DriveClient.NotFoundException) {
+            prefs.driveFolderId = null
+            return Result.retry()
+        } catch (_: Throwable) {
             if (runAttemptCount >= 5) notifyFailed()
             return Result.retry()
         }
 
         file.delete()
         notifyDone()
-        broadcastIdleIfClear()
+        notifyWidgetOfQueueState()
         return Result.success()
     }
 
-    private fun broadcastIdleIfClear() {
+    private fun notifyWidgetOfQueueState() {
         val pending = File(applicationContext.filesDir, "pending")
         val stillHasFiles = pending.listFiles()?.any { it.extension == "m4a" } ?: false
-        val state = if (stillHasFiles) RecordingService.STATE_UPLOADING else RecordingService.STATE_IDLE
-        applicationContext.sendBroadcast(
-            Intent(RecordingService.ACTION_STATE_CHANGED)
-                .setPackage(applicationContext.packageName)
-                .putExtra(RecordingService.EXTRA_STATE, state)
-        )
+        val state = if (stillHasFiles || RecordingService.isRunning) {
+            if (RecordingService.isRunning) RecordingService.STATE_RECORDING else RecordingService.STATE_UPLOADING
+        } else RecordingService.STATE_IDLE
+        RecordWidget.notifyStateChanged(applicationContext, state)
     }
 
     private fun notifyDone() {
@@ -81,7 +83,8 @@ class DriveUploadWorker(context: Context, params: WorkerParameters) :
         val nm = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val open = PendingIntent.getActivity(
             applicationContext, 0,
-            Intent(applicationContext, MainActivity::class.java),
+            Intent(applicationContext, MainActivity::class.java)
+                .putExtra(MainActivity.EXTRA_FORCE_SETTINGS, true),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val n = NotificationCompat.Builder(applicationContext, RecordingService.CHANNEL_UPLOAD)
@@ -97,7 +100,9 @@ class DriveUploadWorker(context: Context, params: WorkerParameters) :
         val nm = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val open = PendingIntent.getActivity(
             applicationContext, 0,
-            Intent(applicationContext, MainActivity::class.java).putExtra(MainActivity.EXTRA_REQUEST_AUTH, true),
+            Intent(applicationContext, MainActivity::class.java)
+                .putExtra(MainActivity.EXTRA_REQUEST_AUTH, true)
+                .putExtra(MainActivity.EXTRA_FORCE_SETTINGS, true),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val n = NotificationCompat.Builder(applicationContext, RecordingService.CHANNEL_UPLOAD)

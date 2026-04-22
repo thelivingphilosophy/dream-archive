@@ -6,7 +6,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.widget.Button
-import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
@@ -17,9 +16,7 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.auth.UserRecoverableAuthException
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.material.switchmaterial.SwitchMaterial
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
 
 class MainActivity : AppCompatActivity() {
@@ -33,6 +30,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var damagedCount: TextView
     private lateinit var connectButton: Button
     private lateinit var testRecordButton: Button
+    private lateinit var recordOnLaunchSwitch: SwitchMaterial
     private lateinit var beepSwitch: SwitchMaterial
     private lateinit var hapticSwitch: SwitchMaterial
     private lateinit var maxLengthGroup: RadioGroup
@@ -47,7 +45,7 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { result ->
         if (result[Manifest.permission.RECORD_AUDIO] == true) {
-            startService(RecordingService.startIntent(this))
+            ContextCompat.startForegroundService(this, RecordingService.startIntent(this))
         } else {
             Toast.makeText(this, "Microphone permission is required to record.", Toast.LENGTH_LONG).show()
         }
@@ -55,9 +53,18 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
         prefs = Prefs(this)
         drive = DriveClient(this)
+
+        // F1: if this is a direct launcher tap and the app is configured,
+        // start recording and finish before rendering the settings UI.
+        if (shouldAutoRecord(intent)) {
+            ContextCompat.startForegroundService(this, RecordingService.startIntent(this))
+            finishAndRemoveTask()
+            return
+        }
+
+        setContentView(R.layout.activity_main)
 
         driveStatus = findViewById(R.id.drive_status)
         folderName = findViewById(R.id.folder_name)
@@ -65,6 +72,7 @@ class MainActivity : AppCompatActivity() {
         damagedCount = findViewById(R.id.damaged_count)
         connectButton = findViewById(R.id.connect_button)
         testRecordButton = findViewById(R.id.test_record_button)
+        recordOnLaunchSwitch = findViewById(R.id.record_on_launch_switch)
         beepSwitch = findViewById(R.id.beep_switch)
         hapticSwitch = findViewById(R.id.haptic_switch)
         maxLengthGroup = findViewById(R.id.max_length_group)
@@ -72,6 +80,7 @@ class MainActivity : AppCompatActivity() {
         connectButton.setOnClickListener { launchSignIn() }
         testRecordButton.setOnClickListener { handleTestRecord() }
 
+        recordOnLaunchSwitch.setOnCheckedChangeListener { _, c -> prefs.recordOnLaunch = c }
         beepSwitch.setOnCheckedChangeListener { _, c -> prefs.beepEnabled = c }
         hapticSwitch.setOnCheckedChangeListener { _, c -> prefs.hapticEnabled = c }
         maxLengthGroup.setOnCheckedChangeListener { _, id ->
@@ -86,10 +95,31 @@ class MainActivity : AppCompatActivity() {
 
         if (intent.getBooleanExtra(EXTRA_REQUEST_PERMISSION, false)) requestRuntimePermissions()
         if (intent.getBooleanExtra(EXTRA_REQUEST_AUTH, false)) launchSignIn()
+        // Opportunistically ask for notifications on first run; recording doesn't depend on it.
+        maybeRequestNotificationPermission()
+    }
+
+    private fun shouldAutoRecord(intent: Intent): Boolean {
+        // Shortcut → ACTION_VIEW. Recording notification → no LAUNCHER category.
+        // Only the home-screen icon tap / Samsung Side Key "Open app" fire ACTION_MAIN + CATEGORY_LAUNCHER.
+        if (intent.action != Intent.ACTION_MAIN) return false
+        if (intent.categories?.contains(Intent.CATEGORY_LAUNCHER) != true) return false
+        if (intent.getBooleanExtra(EXTRA_FORCE_SETTINGS, false)) return false
+        if (intent.getBooleanExtra(EXTRA_REQUEST_AUTH, false)) return false
+        if (intent.getBooleanExtra(EXTRA_REQUEST_PERMISSION, false)) return false
+        if (!prefs.recordOnLaunch) return false
+        if (drive.currentAccount() == null) return false
+        if (prefs.driveFolderId == null) return false
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) !=
+            PackageManager.PERMISSION_GRANTED) return false
+        if (RecordingService.isRunning) return false // second tap shouldn't restart
+        return true
     }
 
     override fun onResume() {
         super.onResume()
+        // Only refresh if we actually inflated the layout (we may have finished in onCreate).
+        if (isFinishing || !::driveStatus.isInitialized) return
         refresh()
     }
 
@@ -106,7 +136,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val pendingDir = File(filesDir, "pending")
-        val pending = pendingDir.listFiles { f -> f.extension == "m4a" && f.length() > 1024 }?.size ?: 0
+        val pending = pendingDir.listFiles { f -> f.extension == "m4a" }?.size ?: 0
         if (pending > 0) {
             pendingCount.visibility = android.view.View.VISIBLE
             pendingCount.text = getString(R.string.pending_uploads, pending)
@@ -114,7 +144,8 @@ class MainActivity : AppCompatActivity() {
             pendingCount.visibility = android.view.View.GONE
         }
 
-        val damaged = pendingDir.listFiles { f -> f.extension == "m4a" && f.length() <= 1024 }?.size ?: 0
+        val damagedDir = File(filesDir, "damaged")
+        val damaged = damagedDir.listFiles { f -> f.extension == "m4a" }?.size ?: 0
         if (damaged > 0) {
             damagedCount.visibility = android.view.View.VISIBLE
             damagedCount.text = getString(R.string.damaged_files, damaged)
@@ -122,6 +153,7 @@ class MainActivity : AppCompatActivity() {
             damagedCount.visibility = android.view.View.GONE
         }
 
+        recordOnLaunchSwitch.isChecked = prefs.recordOnLaunch
         beepSwitch.isChecked = prefs.beepEnabled
         hapticSwitch.isChecked = prefs.hapticEnabled
         when (prefs.maxLengthMinutes) {
@@ -143,7 +175,6 @@ class MainActivity : AppCompatActivity() {
         try {
             val account = task.getResult(com.google.android.gms.common.api.ApiException::class.java)
             prefs.accountEmail = account?.email
-            prefs.driveFolderName = prefs.driveFolderName // keep default
             lifecycleScope.launch { ensureFolderAfterSignIn(account) }
         } catch (e: Exception) {
             Toast.makeText(this, "Sign-in failed: ${e.message}", Toast.LENGTH_LONG).show()
@@ -154,7 +185,7 @@ class MainActivity : AppCompatActivity() {
         val acct = account?.account ?: return
         try {
             val token = drive.getAccessToken(acct)
-            val id = withContext(Dispatchers.IO) { drive.ensureFolder(token, prefs.driveFolderName) }
+            val id = drive.ensureFolder(token, prefs.driveFolderName)
             prefs.driveFolderId = id
             runOnUiThread {
                 Toast.makeText(this, "Connected. Drive folder ready.", Toast.LENGTH_SHORT).show()
@@ -173,7 +204,7 @@ class MainActivity : AppCompatActivity() {
             testRecordButton.setText(R.string.record_test)
             return
         }
-        if (!hasAllPermissions()) {
+        if (!hasRecordAudio()) {
             requestRuntimePermissions()
             return
         }
@@ -181,15 +212,9 @@ class MainActivity : AppCompatActivity() {
         testRecordButton.setText(R.string.stop_recording)
     }
 
-    private fun hasAllPermissions(): Boolean {
-        val audio = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
+    private fun hasRecordAudio(): Boolean =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
             PackageManager.PERMISSION_GRANTED
-        val notif = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
-                PackageManager.PERMISSION_GRANTED
-        } else true
-        return audio && notif
-    }
 
     private fun requestRuntimePermissions() {
         val perms = mutableListOf(Manifest.permission.RECORD_AUDIO)
@@ -199,9 +224,16 @@ class MainActivity : AppCompatActivity() {
         requestPermissionsLauncher.launch(perms.toTypedArray())
     }
 
+    private fun maybeRequestNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED) return
+        requestPermissionsLauncher.launch(arrayOf(Manifest.permission.POST_NOTIFICATIONS))
+    }
+
     private fun cleanupDamaged() {
-        val pendingDir = File(filesDir, "pending")
-        val removed = pendingDir.listFiles { f -> f.extension == "m4a" && f.length() <= 1024 }?.count { it.delete() } ?: 0
+        val damagedDir = File(filesDir, "damaged")
+        val removed = damagedDir.listFiles { f -> f.extension == "m4a" }?.count { it.delete() } ?: 0
         if (removed > 0) Toast.makeText(this, "Removed $removed damaged file(s).", Toast.LENGTH_SHORT).show()
         refresh()
     }
@@ -209,5 +241,6 @@ class MainActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_REQUEST_PERMISSION = "request_permission"
         const val EXTRA_REQUEST_AUTH = "request_auth"
+        const val EXTRA_FORCE_SETTINGS = "force_settings"
     }
 }

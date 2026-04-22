@@ -19,6 +19,10 @@
     <string name="max_length_30">30 minutes</string>
     <string name="max_length_60">60 minutes</string>
     <string name="side_key_hint">Tip: Settings → Advanced features → Side key → Double press → Open app → Conn Dreams. Double-press to start a recording from the lock screen.</string>
+    <string name="record_on_launch">Record when app opens</string>
+    <string name="record_on_launch_hint">With this on, opening the app (via Side Key or tapping the icon) immediately starts a recording. Long-press the icon and tap "Settings" to access this screen without recording.</string>
+    <string name="shortcut_settings_short">Settings</string>
+    <string name="shortcut_settings_long">Open Conn Dreams settings</string>
 
     <string name="notif_channel_recording">Recording</string>
     <string name="notif_channel_upload">Upload</string>

@@ -11,26 +11,10 @@ import android.widget.RemoteViews
 class RecordWidget : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
-        val state = currentState()
+        val state = if (RecordingService.isRunning) RecordingService.STATE_RECORDING else RecordingService.STATE_IDLE
         for (id in appWidgetIds) {
             appWidgetManager.updateAppWidget(id, buildViews(context, state))
         }
-    }
-
-    override fun onReceive(context: Context, intent: Intent) {
-        super.onReceive(context, intent)
-        if (intent.action == RecordingService.ACTION_STATE_CHANGED || intent.action == ACTION_REFRESH) {
-            refreshAll(context, intent.getStringExtra(RecordingService.EXTRA_STATE) ?: currentState())
-        }
-    }
-
-    private fun currentState(): String =
-        if (RecordingService.isRunning) RecordingService.STATE_RECORDING else RecordingService.STATE_IDLE
-
-    private fun refreshAll(context: Context, state: String) {
-        val mgr = AppWidgetManager.getInstance(context)
-        val ids = mgr.getAppWidgetIds(ComponentName(context, RecordWidget::class.java))
-        for (id in ids) mgr.updateAppWidget(id, buildViews(context, state))
     }
 
     private fun buildViews(context: Context, state: String): RemoteViews {
@@ -50,7 +34,6 @@ class RecordWidget : AppWidgetProvider() {
         views.setImageViewResource(R.id.widget_button, iconRes)
 
         val tapIntent = Intent(context, QuickRecordActivity::class.java)
-            .setAction("com.conndreams.recorder.action.QUICK_RECORD")
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         val pi = PendingIntent.getActivity(
             context, 0, tapIntent,
@@ -61,6 +44,18 @@ class RecordWidget : AppWidgetProvider() {
     }
 
     companion object {
-        const val ACTION_REFRESH = "com.conndreams.recorder.action.WIDGET_REFRESH"
+        /**
+         * Push a fresh set of RemoteViews to every live widget instance — call this from
+         * service/worker code on state transitions. Cheaper and more reliable than broadcasting.
+         */
+        fun notifyStateChanged(context: Context, state: String) {
+            val mgr = AppWidgetManager.getInstance(context)
+            val ids = mgr.getAppWidgetIds(ComponentName(context, RecordWidget::class.java))
+            if (ids.isEmpty()) return
+            val provider = RecordWidget()
+            for (id in ids) {
+                mgr.updateAppWidget(id, provider.buildViews(context, state))
+            }
+        }
     }
 }

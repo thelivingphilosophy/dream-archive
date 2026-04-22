@@ -19,7 +19,6 @@ import android.os.Looper
 import android.os.PowerManager
 import android.os.SystemClock
 import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
@@ -111,7 +110,7 @@ class RecordingService : Service() {
         cues.start()
         mainHandler.post(tickRunnable)
         mainHandler.postDelayed(maxDurationRunnable, (maxMs + 2_000).toLong())
-        broadcastState(STATE_RECORDING)
+        RecordWidget.notifyStateChanged(this, STATE_RECORDING)
     }
 
     private fun stopRecording(reason: String) {
@@ -128,7 +127,8 @@ class RecordingService : Service() {
                 rec.stop()
                 savedOk = true
             } catch (_: Throwable) {
-                // Either too short, or an error — file may still be partially valid.
+                // MediaRecorder.stop() throws when the stream ended abnormally — the .m4a
+                // will be missing its MOOV atom, so the file is unplayable/untranscribable.
             }
             safeReleaseRecorder(rec)
         }
@@ -138,17 +138,35 @@ class RecordingService : Service() {
 
         val file = outputFile
         outputFile = null
-        cues.stop()
 
-        if (file != null && file.exists() && file.length() > 1024) {
-            enqueueUpload(file)
-            broadcastState(STATE_UPLOADING)
+        if (file != null && file.exists()) {
+            if (savedOk && file.length() > 1024) {
+                cues.stop()
+                enqueueUpload(file)
+                RecordWidget.notifyStateChanged(this, STATE_UPLOADING)
+            } else {
+                cues.error()
+                quarantine(file)
+                RecordWidget.notifyStateChanged(this, STATE_IDLE)
+            }
         } else {
-            file?.delete()
-            broadcastState(STATE_IDLE)
+            cues.stop()
+            RecordWidget.notifyStateChanged(this, STATE_IDLE)
         }
 
         stopForegroundAndSelf()
+    }
+
+    private fun quarantine(file: File) {
+        val damagedDir = File(filesDir, "damaged").apply { mkdirs() }
+        val target = File(damagedDir, file.name)
+        if (!file.renameTo(target)) {
+            // Fallback: copy + delete. Same filesystem in practice, so renameTo should succeed.
+            runCatching {
+                file.copyTo(target, overwrite = true)
+                file.delete()
+            }
+        }
     }
 
     private fun buildRecorder(): MediaRecorder {
@@ -252,7 +270,8 @@ class RecordingService : Service() {
         )
         val openMain = PendingIntent.getActivity(
             this, 1,
-            Intent(this, MainActivity::class.java),
+            Intent(this, MainActivity::class.java)
+                .putExtra(MainActivity.EXTRA_FORCE_SETTINGS, true),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val mm = elapsedSeconds / 60
@@ -304,14 +323,6 @@ class RecordingService : Service() {
         return name
     }
 
-    private fun broadcastState(state: String) {
-        sendBroadcast(
-            Intent(ACTION_STATE_CHANGED)
-                .setPackage(packageName)
-                .putExtra(EXTRA_STATE, state)
-        )
-    }
-
     override fun onDestroy() {
         mainHandler.removeCallbacks(tickRunnable)
         mainHandler.removeCallbacks(maxDurationRunnable)
@@ -326,8 +337,6 @@ class RecordingService : Service() {
     companion object {
         const val ACTION_START = "com.conndreams.recorder.action.START"
         const val ACTION_STOP = "com.conndreams.recorder.action.STOP"
-        const val ACTION_STATE_CHANGED = "com.conndreams.recorder.action.STATE_CHANGED"
-        const val EXTRA_STATE = "state"
 
         const val STATE_IDLE = "idle"
         const val STATE_RECORDING = "recording"
@@ -337,7 +346,8 @@ class RecordingService : Service() {
         const val CHANNEL_UPLOAD = "upload"
         private const val NOTIF_ID = 1001
 
-        private val ISO_FILENAME = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US)
+        // Millisecond precision — collision-proof for back-to-back recordings.
+        private val ISO_FILENAME = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss-SSS", Locale.US)
 
         @Volatile
         var isRunning: Boolean = false
