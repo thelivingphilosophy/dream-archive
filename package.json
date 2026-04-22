@@ -55,6 +55,6 @@
     "nsis": {
       "perMachine": false,
       "oneClick": false
-    },
+    }
   }
 }
