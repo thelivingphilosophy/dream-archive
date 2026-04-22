@@ -1,0 +1,95 @@
+/* ═══════════════════════════════════════════════════════════════
+   Dream Archive — Colour Tokens
+   Activate light mode by adding  data-theme="light"  to <html>.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Dark / Midnight (default) ───────────────────────────────── */
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Canvas — near-black with a breath of warm violet */
+  --bg:        #09080d;   /* void */
+  --surface:   #0e0d16;   /* card — just perceptibly lighter */
+  --surface2:  #141220;   /* raised elements, toggles */
+
+  /* Inputs */
+  --input-bg:       rgba(12, 11, 20, 0.85);
+  --input-bg-focus: rgba(16, 14, 26, 0.97);
+
+  /* Borders — very subtle, low-contrast */
+  --border:    #1a1828;
+  --border2:   #222035;
+
+  /* Text */
+  --text:      #bdb3a0;   /* warm parchment — not dazzling white */
+  --muted:     #7a7494;   /* readable secondary — violet-grey */
+
+  /* Accents — aged amber, not bright orange-gold */
+  --accent:       #8e6e38;   /* dark tarnished gold */
+  --accent2:      #a8844a;   /* slightly warmer */
+  --accent-dark:  #614a22;   /* deep amber for gradient starts */
+  --accent-light: #c09a58;   /* pale amber for gradient ends */
+  --accent-rgb:   142, 110, 56;   /* for rgba() usage */
+  --red-rgb:      136, 48, 80;    /* matches --red */
+  --yellow-rgb:   138, 106, 42;   /* matches --yellow */
+
+  /* Semantic */
+  --green:     #52845e;
+  --yellow:    #8a6a2a;
+  --red:       #883050;
+  --purple:    #6a5898;
+
+  /* Ambient atmosphere — deep, not vivid */
+  --glow-top:  rgba(22, 16, 55, 0.55);   /* deep violet haze, no blue spike */
+  --glow-br:   rgba(60, 30, 8, 0.18);    /* faint ember warmth */
+  --glow-left: rgba(14, 12, 40, 0.35);   /* void depth */
+
+  /* Misc */
+  --btn-primary-text: #ede6d8;
+  --radius: 10px;
+  --font:   'DM Sans', system-ui, sans-serif;
+  --serif:  'Cormorant Garamond', Georgia, serif;
+  --mono:   'DM Mono', 'Cascadia Code', 'Consolas', monospace;
+}
+
+/* ── Light / Parchment ────────────────────────────────────────── */
+[data-theme="light"] {
+  color-scheme: light;
+
+  --bg:        #f2ece0;
+  --surface:   #e9e1d2;
+  --surface2:  #dfd6c4;
+
+  --input-bg:       rgba(233, 225, 210, 0.90);
+  --input-bg-focus: rgba(252, 248, 240, 0.98);
+
+  --border:    #c8be9e;
+  --border2:   #b4a888;
+
+  --text:      #26190a;
+  --muted:     #706554;
+
+  --accent:       #7a5020;
+  --accent2:      #9a6830;
+  --accent-dark:  #562e10;
+  --accent-light: #b87838;
+  --accent-rgb:   122, 80, 32;
+  --red-rgb:      138, 32, 48;
+  --yellow-rgb:   138, 96, 16;
+
+  --green:     #2e6e3a;
+  --yellow:    #8a6010;
+  --red:       #8a2030;
+  --purple:    #504080;
+
+  --glow-top:  rgba(120, 80, 20, 0.08);
+  --glow-br:   rgba(80, 45, 10, 0.05);
+  --glow-left: rgba(100, 60, 15, 0.04);
+
+  --btn-primary-text: #f2ece0;
+  --radius: 10px;
+  --font:   'DM Sans', system-ui, sans-serif;
+  --serif:  'Cormorant Garamond', Georgia, serif;
+  --mono:   'DM Mono', 'Cascadia Code', 'Consolas', monospace;
+}

@@ -54,6 +54,7 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   try {
     if (req.method === 'GET'  && url.pathname === '/')             return serveHtml(res);
+    if (req.method === 'GET'  && /^\/[\w-]+\.css$/.test(url.pathname)) return serveAsset(res, url.pathname.slice(1));
     if (req.method === 'GET'  && url.pathname === '/api/defaults') return handleDefaults(res);
     if (req.method === 'GET'  && url.pathname === '/api/browse')   return handleBrowse(res);
     if (req.method === 'GET'  && url.pathname === '/api/scan')     return handleScan(res, url);
@@ -72,6 +73,13 @@ function serveHtml(res) {
   const html = fs.readFileSync(path.join(__dirname, 'index.html'));
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
   res.end(html);
+}
+
+function serveAsset(res, filename) {
+  const filePath = path.join(__dirname, filename);
+  if (!fs.existsSync(filePath)) { res.writeHead(404); return res.end(); }
+  res.writeHead(200, { 'Content-Type': 'text/css; charset=utf-8' });
+  res.end(fs.readFileSync(filePath));
 }
 
 // ─── Defaults ─────────────────────────────────────────────────────────────────

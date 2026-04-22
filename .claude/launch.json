@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "icon-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-p", "3131", "./icon-preview"],
+      "port": 3131
+    },
+    {
+      "name": "dream-archive",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["app/app.js"],
+      "port": 3000
+    }
+  ]
+}
