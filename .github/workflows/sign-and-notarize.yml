@@ -21,18 +21,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Validate Apple credentials
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          APPLE_PASS: ${{ secrets.APPLE_APP_PASSWORD }}
-        run: |
-          xcrun notarytool history \
-            --apple-id "$APPLE_ID" \
-            --password "$APPLE_PASS" \
-            --team-id "$APPLE_TEAM_ID" \
-            --output-format json 2>&1 | head -20
-
       - name: Import signing certificate
         uses: apple-actions/import-codesign-certs@v3
         with:
