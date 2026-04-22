@@ -1,0 +1,57 @@
+name: Check and Staple Notarization
+
+on:
+  workflow_dispatch:
+    inputs:
+      submission_id:
+        description: 'Apple notarization submission ID'
+        required: true
+        default: '7d9410d0-bacd-4a41-889c-117e705e4fe2'
+      build_run_id:
+        description: 'GitHub Actions run ID that produced the DMG artifact'
+        required: true
+
+jobs:
+  check-and-staple:
+    runs-on: macos-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check notarization status
+        id: check
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_PASS: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          STATUS=$(xcrun notarytool info "${{ github.event.inputs.submission_id }}" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASS" \
+            --team-id "$APPLE_TEAM_ID" \
+            --output-format json | python3 -c "import sys,json; print(json.load(sys.stdin).get('status','unknown'))")
+          echo "Status: $STATUS"
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+
+      - name: Download DMG artifact
+        if: steps.check.outputs.status == 'Accepted'
+        uses: actions/download-artifact@v4
+        with:
+          name: DreamArchive
+          run-id: ${{ github.event.inputs.build_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Staple DMG
+        if: steps.check.outputs.status == 'Accepted'
+        run: |
+          for dmg in *.dmg; do
+            echo "Stapling $dmg…"
+            xcrun stapler staple "$dmg"
+          done
+
+      - name: Upload stapled DMG
+        if: steps.check.outputs.status == 'Accepted'
+        uses: actions/upload-artifact@v4
+        with:
+          name: DreamArchive-stapled
+          path: '*.dmg'
+          retention-days: 30
