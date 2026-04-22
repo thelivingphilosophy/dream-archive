@@ -29,7 +29,7 @@ jobs:
 
       - name: Build, sign and notarize
         env:
-          CSC_NAME:                  ${{ secrets.DEVELOPER_ID_IDENTITY }}
+          CSC_NAME:                  ${{ secrets.APPLE_SIGNING_NAME }}
           APPLE_ID:                  ${{ secrets.APPLE_ID }}
           APPLE_TEAM_ID:             ${{ secrets.APPLE_TEAM_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
