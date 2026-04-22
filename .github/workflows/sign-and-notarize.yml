@@ -1,0 +1,82 @@
+name: Sign and Notarize
+
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build app bundle
+        run: bash build-mac-app.sh
+
+      - name: Import signing certificate
+        env:
+          P12_BASE64: ${{ secrets.DEVELOPER_ID_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 16)"
+
+          echo "$P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 3600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$RUNNER_TEMP/cert.p12" \
+            -k "$KEYCHAIN_PATH" \
+            -P "$P12_PASSWORD" \
+            -T /usr/bin/codesign
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          security set-key-partition-list \
+            -S apple-tool:,apple: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+      - name: Sign app
+        env:
+          SIGN_IDENTITY: ${{ secrets.DEVELOPER_ID_IDENTITY }}
+        run: |
+          codesign \
+            --deep \
+            --force \
+            --options runtime \
+            --sign "$SIGN_IDENTITY" \
+            "Dream Archive.app"
+
+          codesign --verify --deep --strict "Dream Archive.app"
+          echo "Signing verified."
+
+      - name: Notarize app
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          ditto -c -k --keepParent "Dream Archive.app" DreamArchive.zip
+
+          xcrun notarytool submit DreamArchive.zip \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_PASSWORD" \
+            --wait
+
+      - name: Staple notarization ticket
+        run: |
+          xcrun stapler staple "Dream Archive.app"
+          xcrun stapler validate "Dream Archive.app"
+          echo "Stapling verified."
+
+      - name: Package for distribution
+        run: ditto -c -k --keepParent "Dream Archive.app" "DreamArchive-signed.zip"
+
+      - name: Upload signed app
+        uses: actions/upload-artifact@v4
+        with:
+          name: DreamArchive-signed
+          path: DreamArchive-signed.zip
+          retention-days: 30
