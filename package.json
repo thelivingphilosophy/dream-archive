@@ -36,8 +36,7 @@
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "entitlements.mac.plist",
-      "entitlementsInherit": "entitlements.mac.plist",
-      "afterSign": "scripts/notarize.js"
+      "entitlementsInherit": "entitlements.mac.plist"
     },
     "win": {
       "icon": "AppIcon.png",
@@ -53,6 +52,7 @@
     "nsis": {
       "perMachine": false,
       "oneClick": false
-    }
+    },
+    "afterSign": "scripts/notarize.js"
   }
 }
