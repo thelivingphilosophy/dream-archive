@@ -8,6 +8,7 @@
     "dist:win": "electron-builder --win --publish never"
   },
   "devDependencies": {
+    "@electron/notarize": "^2.3.0",
     "electron": "^31.0.0",
     "electron-builder": "^24.0.0",
     "sharp": "^0.34.5"
@@ -35,7 +36,8 @@
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "entitlements.mac.plist",
-      "entitlementsInherit": "entitlements.mac.plist"
+      "entitlementsInherit": "entitlements.mac.plist",
+      "afterSign": "scripts/notarize.js"
     },
     "win": {
       "icon": "AppIcon.png",

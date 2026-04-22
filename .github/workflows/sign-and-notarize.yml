@@ -1,4 +1,4 @@
-name: Sign and Notarize
+name: Build and Notarize
 
 on:
   push:
@@ -13,124 +13,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build app bundle
-        run: bash build-mac-app.sh
-
-      - name: Compile Mach-O launcher wrapper
-        run: |
-          # Apple notarization requires a Mach-O binary as the main executable.
-          # Compile a minimal C stub that exec's the shell script alongside it.
-          cat > /tmp/launcher_stub.c << 'EOF'
-          #include <unistd.h>
-          #include <stdio.h>
-          #include <string.h>
-          #include <mach-o/dyld.h>
-          #include <sys/param.h>
-          #include <libgen.h>
-
-          int main(void) {
-              char self[MAXPATHLEN];
-              uint32_t size = sizeof(self);
-              if (_NSGetExecutablePath(self, &size) != 0) {
-                  fprintf(stderr, "Dream Archive: failed to resolve executable path\n");
-                  return 1;
-              }
-              char dir[MAXPATHLEN];
-              strncpy(dir, self, sizeof(dir));
-              char *d = dirname(dir);
-              char script[MAXPATHLEN];
-              snprintf(script, sizeof(script), "%s/launcher.sh", d);
-              char * const args[] = { "/bin/bash", script, NULL };
-              execv("/bin/bash", args);
-              perror("Dream Archive: execv failed");
-              return 1;
-          }
-          EOF
-
-          clang -o /tmp/launcher_bin /tmp/launcher_stub.c
-
-          # Rename the shell script, drop the compiled binary in its place
-          mv "Dream Archive.app/Contents/MacOS/launcher" "Dream Archive.app/Contents/MacOS/launcher.sh"
-          cp /tmp/launcher_bin "Dream Archive.app/Contents/MacOS/launcher"
-          chmod +x "Dream Archive.app/Contents/MacOS/launcher"
-          chmod +x "Dream Archive.app/Contents/MacOS/launcher.sh"
-
-      - name: Import signing certificate
-        uses: apple-actions/import-codesign-certs@v3
+      - uses: actions/setup-node@v4
         with:
-          p12-file-base64: ${{ secrets.DEVELOPER_ID_P12_BASE64 }}
-          p12-password: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+          node-version: 20
+          cache: npm
 
-      - name: Sign app
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build, sign and notarize
         env:
-          SIGN_IDENTITY: ${{ secrets.DEVELOPER_ID_IDENTITY }}
-        run: |
-          codesign \
-            --deep \
-            --force \
-            --options runtime \
-            --sign "$SIGN_IDENTITY" \
-            "Dream Archive.app"
+          CSC_LINK:                  ${{ secrets.DEVELOPER_ID_P12_BASE64 }}
+          CSC_KEY_PASSWORD:          ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+          APPLE_ID:                  ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID:             ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: npm run dist:mac
 
-          codesign --verify --deep --strict "Dream Archive.app"
-          echo "Signing verified."
-
-      - name: Notarize app
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
-        run: |
-          ditto -c -k --keepParent "Dream Archive.app" DreamArchive.zip
-
-          SUBMISSION=$(xcrun notarytool submit DreamArchive.zip \
-            --apple-id "$APPLE_ID" \
-            --team-id "$APPLE_TEAM_ID" \
-            --password "$APPLE_APP_PASSWORD" \
-            --output-format json)
-
-          echo "$SUBMISSION"
-          SUBMISSION_ID=$(echo "$SUBMISSION" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
-          echo "Submission ID: $SUBMISSION_ID"
-
-          # Poll until accepted/invalid/rejected (max 50 min)
-          DEADLINE=$(( $(date +%s) + 3000 ))
-          STATUS=""
-          while [ "$(date +%s)" -lt "$DEADLINE" ]; do
-            sleep 30
-            STATUS=$(xcrun notarytool info "$SUBMISSION_ID" \
-              --apple-id "$APPLE_ID" \
-              --team-id "$APPLE_TEAM_ID" \
-              --password "$APPLE_APP_PASSWORD" \
-              --output-format json 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin).get('status',''))" 2>/dev/null || echo "")
-            echo "Status: $STATUS"
-            if [ "$STATUS" = "Accepted" ] || [ "$STATUS" = "Invalid" ] || [ "$STATUS" = "Rejected" ]; then
-              break
-            fi
-          done
-
-          xcrun notarytool log "$SUBMISSION_ID" \
-            --apple-id "$APPLE_ID" \
-            --team-id "$APPLE_TEAM_ID" \
-            --password "$APPLE_APP_PASSWORD" 2>/dev/null || true
-
-          if [ "$STATUS" != "Accepted" ]; then
-            echo "Notarization failed with status: $STATUS"
-            exit 1
-          fi
-
-      - name: Staple notarization ticket
-        run: |
-          xcrun stapler staple "Dream Archive.app"
-          xcrun stapler validate "Dream Archive.app"
-          echo "Stapling verified."
-
-      - name: Package for distribution
-        run: ditto -c -k --keepParent "Dream Archive.app" "DreamArchive-signed.zip"
-
-      - name: Upload signed app
+      - name: Upload DMG
         uses: actions/upload-artifact@v4
         with:
-          name: DreamArchive-signed
-          path: DreamArchive-signed.zip
+          name: DreamArchive
+          path: dist/*.dmg
           retention-days: 30
