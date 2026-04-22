@@ -36,7 +36,10 @@
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "entitlements.mac.plist",
-      "entitlementsInherit": "entitlements.mac.plist"
+      "entitlementsInherit": "entitlements.mac.plist",
+      "notarize": {
+        "teamId": "SRJ3SHQD84"
+      }
     },
     "win": {
       "icon": "AppIcon.png",
@@ -53,6 +56,5 @@
       "perMachine": false,
       "oneClick": false
     },
-    "afterSign": "scripts/notarize.js"
   }
 }
