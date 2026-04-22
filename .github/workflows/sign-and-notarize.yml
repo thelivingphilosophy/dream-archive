@@ -24,11 +24,13 @@ jobs:
 
           echo "$P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
 
-          # Re-wrap with a temp password — macOS security tool rejects passwordless P12
+          # Re-wrap with a temp password; -nomacver bypasses LibreSSL strictness on empty-password P12s
           openssl pkcs12 -in "$RUNNER_TEMP/cert.p12" \
+            -nomacver \
             -passin pass: \
             -passout pass:"$KEYCHAIN_PASSWORD" \
-            -out "$RUNNER_TEMP/cert_wrapped.p12"
+            -out "$RUNNER_TEMP/cert_wrapped.p12" \
+            -legacy
 
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 3600 "$KEYCHAIN_PATH"
