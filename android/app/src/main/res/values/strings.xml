@@ -3,7 +3,7 @@
     <string name="app_name">Conn Dreams</string>
 
     <string name="connect_drive">Connect Google Drive</string>
-    <string name="reconnect_drive">Reconnect Google Drive</string>
+    <string name="reconnect_drive">Switch Google account</string>
     <string name="drive_not_connected">Not connected</string>
     <string name="drive_connected">Signed in as %1$s</string>
     <string name="drive_folder_label">Drive folder</string>

@@ -56,10 +56,14 @@ class MainActivity : AppCompatActivity() {
         prefs = Prefs(this)
         drive = DriveClient(this)
 
-        // F1: if this is a direct launcher tap and the app is configured,
-        // start recording and finish before rendering the settings UI.
-        if (shouldAutoRecord(intent)) {
-            ContextCompat.startForegroundService(this, RecordingService.startIntent(this))
+        // F1: if this is a direct launcher tap (home icon / Samsung Side Key) and the app
+        // is configured, toggle RecordingService — start if idle, stop if already recording.
+        if (shouldToggleRecording(intent)) {
+            val action = if (RecordingService.isRunning) RecordingService.ACTION_STOP else RecordingService.ACTION_START
+            ContextCompat.startForegroundService(
+                this,
+                Intent(this, RecordingService::class.java).setAction(action)
+            )
             finishAndRemoveTask()
             return
         }
@@ -101,7 +105,7 @@ class MainActivity : AppCompatActivity() {
         if (!requestingPerms) maybeRequestNotificationPermission()
     }
 
-    private fun shouldAutoRecord(intent: Intent): Boolean {
+    private fun shouldToggleRecording(intent: Intent): Boolean {
         // Shortcut → ACTION_VIEW. Recording notification → no LAUNCHER category.
         // Only the home-screen icon tap / Samsung Side Key "Open app" fire ACTION_MAIN + CATEGORY_LAUNCHER.
         if (intent.action != Intent.ACTION_MAIN) return false
@@ -114,8 +118,20 @@ class MainActivity : AppCompatActivity() {
         if (prefs.driveFolderId == null) return false
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) !=
             PackageManager.PERMISSION_GRANTED) return false
-        if (RecordingService.isRunning) return false // second tap shouldn't restart
         return true
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // MainActivity is singleTask, so a repeat Side Key press lands here instead of onCreate.
+        if (shouldToggleRecording(intent)) {
+            val action = if (RecordingService.isRunning) RecordingService.ACTION_STOP else RecordingService.ACTION_START
+            ContextCompat.startForegroundService(
+                this,
+                Intent(this, RecordingService::class.java).setAction(action)
+            )
+            finishAndRemoveTask()
+        }
     }
 
     override fun onResume() {
