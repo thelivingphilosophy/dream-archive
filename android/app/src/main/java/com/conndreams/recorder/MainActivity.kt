@@ -93,10 +93,12 @@ class MainActivity : AppCompatActivity() {
 
         damagedCount.setOnClickListener { cleanupDamaged() }
 
-        if (intent.getBooleanExtra(EXTRA_REQUEST_PERMISSION, false)) requestRuntimePermissions()
+        val requestingPerms = intent.getBooleanExtra(EXTRA_REQUEST_PERMISSION, false)
+        if (requestingPerms) requestRuntimePermissions()
         if (intent.getBooleanExtra(EXTRA_REQUEST_AUTH, false)) launchSignIn()
-        // Opportunistically ask for notifications on first run; recording doesn't depend on it.
-        maybeRequestNotificationPermission()
+        // Opportunistic notification prompt — skip when requestRuntimePermissions already
+        // includes POST_NOTIFICATIONS, else the system launches two prompts back-to-back.
+        if (!requestingPerms) maybeRequestNotificationPermission()
     }
 
     private fun shouldAutoRecord(intent: Intent): Boolean {

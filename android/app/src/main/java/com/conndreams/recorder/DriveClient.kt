@@ -69,7 +69,8 @@ class DriveClient(private val context: Context) {
             .header("Authorization", "Bearer $accessToken")
             .build()
         http.newCall(req).execute().use { resp ->
-            throwIfNotFound(resp)
+            // No throwIfNotFound here: `files.list` returns 200 + empty array when nothing matches.
+            // A 404 on this endpoint is an auth/scope glitch, not a missing-parent signal.
             if (!resp.isSuccessful) throw RuntimeException("find folder failed: ${resp.code} ${resp.message}")
             val body = resp.body?.string().orEmpty()
             val files = JsonParser.parseString(body).asJsonObject.getAsJsonArray("files")
@@ -85,7 +86,7 @@ class DriveClient(private val context: Context) {
             .post(meta.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull()))
             .build()
         http.newCall(req).execute().use { resp ->
-            throwIfNotFound(resp)
+            // Same reasoning as findFolder — 404 on create is never "parent missing".
             val body = resp.body?.string().orEmpty()
             if (!resp.isSuccessful) throw RuntimeException("create folder failed: ${resp.code} $body")
             return JsonParser.parseString(body).asJsonObject["id"].asString
@@ -121,7 +122,7 @@ class DriveClient(private val context: Context) {
             .put(file.asRequestBody())
             .build()
         http.newCall(putReq).execute().use { resp ->
-            throwIfNotFound(resp)
+            // PUT 404 means the resumable session expired, not "parent folder gone".
             val body = resp.body?.string().orEmpty()
             if (!resp.isSuccessful) throw RuntimeException("upload PUT failed: ${resp.code} $body")
             return@withContext JsonParser.parseString(body).asJsonObject["id"].asString
