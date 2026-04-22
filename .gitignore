@@ -1,0 +1,5 @@
+app/.env
+Dreams/Audio Recordings/
+node_modules/
+*.icns
+Dream Archive.app/

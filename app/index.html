@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conn's Dream Archive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #04050c;
+    --surface:   #090b18;
+    --surface2:  #0d1020;
+    --border:    #181b30;
+    --border2:   #1f2238;
+    --text:      #ddd0b8;
+    --muted:     #504c68;
+    --accent:    #c49060;
+    --accent2:   #e0b880;
+    --green:     #6aaa7c;
+    --yellow:    #c8a050;
+    --red:       #b85868;
+    --purple:    #8870b8;
+    --radius:    10px;
+    --font:      'DM Sans', system-ui, sans-serif;
+    --serif:     'Cormorant Garamond', Georgia, serif;
+    --mono:      'DM Mono', 'Cascadia Code', 'Consolas', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 52px 16px 80px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 70% 45% at 50% -5%, rgba(80, 55, 120, 0.22) 0%, transparent 65%),
+      radial-gradient(ellipse 50% 60% at 85% 90%, rgba(100, 60, 20, 0.12) 0%, transparent 55%),
+      radial-gradient(ellipse 40% 40% at 10% 60%, rgba(50, 80, 80, 0.07) 0%, transparent 55%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+    pointer-events: none;
+    opacity: 0.55;
+    z-index: 0;
+  }
+
+  /* ── Background sigil ── */
+  .bg-sigil {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 800px;
+    height: 800px;
+    opacity: 0.028;
+    pointer-events: none;
+    z-index: 0;
+    animation: sigil-turn 120s linear infinite;
+  }
+
+  @keyframes sigil-turn {
+    from { transform: translate(-50%, -50%) rotate(0deg); }
+    to   { transform: translate(-50%, -50%) rotate(360deg); }
+  }
+
+  /* ── Background crows ── */
+  .bg-crow {
+    position: fixed;
+    pointer-events: none;
+    z-index: 0;
+    fill: var(--text);
+  }
+
+  .bg-crow-1 { top: 12%; right: 8%;  width: 120px; opacity: 0.05; animation: crow-drift-a 28s ease-in-out infinite; }
+  .bg-crow-2 { bottom: 20%; left: 5%; width: 80px;  opacity: 0.04; animation: crow-drift-b 38s ease-in-out infinite; }
+  .bg-crow-3 { top: 55%; right: 3%;  width: 55px;  opacity: 0.035; animation: crow-drift-c 22s ease-in-out infinite; }
+
+  @keyframes crow-drift-a {
+    0%   { transform: translate(0,0) rotate(-3deg); }
+    25%  { transform: translate(-18px,-22px) rotate(2deg); }
+    55%  { transform: translate(10px,-35px) rotate(-1deg); }
+    80%  { transform: translate(-8px,-15px) rotate(3deg); }
+    100% { transform: translate(0,0) rotate(-3deg); }
+  }
+  @keyframes crow-drift-b {
+    0%   { transform: scaleX(-1) translate(0,0) rotate(2deg); }
+    30%  { transform: scaleX(-1) translate(12px,-18px) rotate(-2deg); }
+    60%  { transform: scaleX(-1) translate(-6px,-28px) rotate(1deg); }
+    100% { transform: scaleX(-1) translate(0,0) rotate(2deg); }
+  }
+  @keyframes crow-drift-c {
+    0%   { transform: translate(0,0) rotate(1deg); }
+    40%  { transform: translate(-14px,-20px) rotate(-3deg); }
+    70%  { transform: translate(8px,-10px) rotate(2deg); }
+    100% { transform: translate(0,0) rotate(1deg); }
+  }
+
+  /* ── App ── */
+  .app {
+    width: 100%;
+    max-width: 660px;
+    position: relative;
+    z-index: 1;
+    animation: fadeUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Header ── */
+  .header {
+    margin-bottom: 44px;
+    position: relative;
+  }
+
+  .header-eyebrow {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    opacity: 0.65;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .header-eyebrow::before,
+  .header-eyebrow::after {
+    content: '';
+    display: block;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent) 60%, transparent);
+    opacity: 0.4;
+    flex: 1;
+  }
+
+  h1 {
+    font-family: var(--serif);
+    font-size: 46px;
+    font-weight: 300;
+    font-style: italic;
+    letter-spacing: -0.5px;
+    line-height: 1.05;
+    margin-bottom: 14px;
+    background: linear-gradient(150deg, #e8d8b8 0%, var(--accent2) 45%, var(--accent) 80%, #9a7048 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-family: var(--serif);
+    font-size: 15px;
+    font-style: italic;
+    font-weight: 300;
+    letter-spacing: 0.3px;
+    line-height: 1.6;
+    opacity: 0.85;
+  }
+
+  .header-rule {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 28px;
+    opacity: 0.3;
+  }
+
+  .header-rule::before { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--accent)); }
+  .header-rule::after  { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--accent), transparent); }
+
+  .header-rule-glyphs {
+    font-family: var(--serif);
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 6px;
+    user-select: none;
+  }
+
+  /* ── Header crow ── */
+  .header-crow {
+    position: absolute;
+    right: -10px;
+    top: -8px;
+    width: 90px;
+    opacity: 0.12;
+    fill: var(--accent2);
+    pointer-events: none;
+    animation: header-crow-breathe 8s ease-in-out infinite;
+  }
+
+  @keyframes header-crow-breathe {
+    0%, 100% { opacity: 0.12; transform: translateY(0); }
+    50%       { opacity: 0.17; transform: translateY(-4px); }
+  }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 26px 26px 24px;
+    margin-bottom: 10px;
+    position: relative;
+    overflow: hidden;
+    animation: fadeUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .card:nth-child(1) { animation-delay: 0.06s; }
+  .card:nth-child(2) { animation-delay: 0.12s; }
+  .card:nth-child(3) { animation-delay: 0.18s; }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, rgba(196,144,96,0.35) 35%, rgba(196,144,96,0.12) 70%, transparent 100%);
+  }
+
+  /* ── Card title — now serif italic, prominent ── */
+  .card-title {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 16px;
+    letter-spacing: 0.5px;
+    color: var(--text);
+    opacity: 0.7;
+    margin-bottom: 22px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .card-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--border2), transparent);
+  }
+
+  .card-glyph {
+    font-family: var(--serif);
+    font-style: normal;
+    font-size: 15px;
+    color: var(--accent);
+    opacity: 0.75;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  /* ── Fields ── */
+  .field { margin-bottom: 16px; }
+  .field:last-child { margin-bottom: 0; }
+
+  label {
+    display: block;
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 300;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 7px;
+    letter-spacing: 0.2px;
+  }
+
+  .folder-row { display: flex; gap: 8px; }
+
+  /* ── Inputs — gold-tinted border, raised surface ── */
+  input[type="text"] {
+    flex: 1;
+    background: rgba(13, 16, 32, 0.75);
+    border: 1.5px solid rgba(196, 144, 96, 0.18);
+    border-radius: 7px;
+    padding: 9px 12px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    letter-spacing: 0.1px;
+  }
+
+  input[type="text"]:focus {
+    background: rgba(16, 20, 40, 0.9);
+    border-color: rgba(196, 144, 96, 0.55);
+    box-shadow: 0 0 0 3px rgba(196, 144, 96, 0.08), inset 0 1px 3px rgba(0,0,0,0.3);
+  }
+
+  input[type="text"]::placeholder { color: var(--muted); opacity: 0.38; }
+
+  textarea {
+    width: 100%;
+    background: rgba(13, 16, 32, 0.75);
+    border: 1.5px solid rgba(196, 144, 96, 0.18);
+    border-radius: 7px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 300;
+    resize: vertical;
+    min-height: 80px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    line-height: 1.65;
+  }
+
+  textarea:focus {
+    background: rgba(16, 20, 40, 0.9);
+    border-color: rgba(196, 144, 96, 0.55);
+    box-shadow: 0 0 0 3px rgba(196, 144, 96, 0.08), inset 0 1px 3px rgba(0,0,0,0.3);
+  }
+
+  textarea::placeholder { color: var(--muted); opacity: 0.38; font-weight: 300; }
+
+  /* ── Button hierarchy ── */
+
+  /* Secondary — browse buttons */
+  .btn {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 7px;
+    color: var(--text);
+    opacity: 0.82;
+    padding: 9px 15px;
+    font-size: 12.5px;
+    font-family: var(--font);
+    font-weight: 400;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, border-color 0.15s, opacity 0.15s, box-shadow 0.15s;
+    letter-spacing: 0.1px;
+  }
+
+  .btn:hover:not(:disabled) {
+    background: var(--border2);
+    border-color: #28304a;
+    opacity: 1;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+
+  .btn:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 2px rgba(196,144,96,0.4);
+  }
+
+  .btn:disabled { opacity: 0.28; cursor: not-allowed; }
+
+  /* Primary — process button */
+  .btn-primary {
+    background: linear-gradient(135deg, #9a6838 0%, var(--accent) 55%, #d8a870 100%);
+    border-color: transparent;
+    color: #06070e;
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 15px;
+    letter-spacing: 0.4px;
+    padding: 10px 28px;
+    opacity: 1;
+    box-shadow: 0 2px 20px rgba(196,144,96,0.22), 0 1px 4px rgba(0,0,0,0.5);
+    transition: opacity 0.15s, box-shadow 0.15s, transform 0.1s;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    opacity: 0.87;
+    box-shadow: 0 4px 28px rgba(196,144,96,0.34), 0 1px 4px rgba(0,0,0,0.5);
+    transform: translateY(-1px);
+    background: linear-gradient(135deg, #9a6838 0%, var(--accent) 55%, #d8a870 100%);
+    border-color: transparent;
+  }
+
+  .btn-primary:active:not(:disabled) { transform: translateY(0); }
+
+  .btn-primary:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(196,144,96,0.4);
+  }
+
+  /* Tertiary — stop button */
+  .btn-stop {
+    background: transparent;
+    border: 1px solid rgba(184,88,104,0.3);
+    color: var(--red);
+    font-size: 12px;
+    padding: 9px 16px;
+    opacity: 1;
+  }
+
+  .btn-stop:hover:not(:disabled) {
+    background: rgba(184,88,104,0.07);
+    border-color: rgba(184,88,104,0.6);
+    box-shadow: none;
+    opacity: 1;
+  }
+
+  /* ── Toggle — more character ── */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .toggle {
+    width: 40px;
+    height: 22px;
+    background: linear-gradient(180deg, #141728 0%, #181c2e 100%);
+    border-radius: 11px;
+    position: relative;
+    transition: background 0.3s;
+    flex-shrink: 0;
+    border: 1px solid var(--border2);
+    box-shadow: inset 0 1px 4px rgba(0,0,0,0.5);
+  }
+
+  .toggle::after {
+    content: '';
+    width: 16px;
+    height: 16px;
+    background: var(--muted);
+    border-radius: 50%;
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s, box-shadow 0.3s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  }
+
+  .toggle.on {
+    background: linear-gradient(135deg, #9a6838 0%, var(--accent) 100%);
+    border-color: rgba(196,144,96,0.4);
+    box-shadow: inset 0 1px 4px rgba(0,0,0,0.2), 0 0 8px rgba(196,144,96,0.12);
+  }
+
+  .toggle.on::after {
+    transform: translateX(18px);
+    background: #05060e;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.5), 0 0 4px rgba(196,144,96,0.2);
+  }
+
+  .toggle-label {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 14px;
+    font-weight: 300;
+    color: var(--text);
+    opacity: 0.85;
+  }
+
+  /* ── Actions ── */
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  .status-pill {
+    font-size: 11.5px;
+    font-family: var(--mono);
+    color: var(--muted);
+    margin-left: auto;
+    letter-spacing: 0.1px;
+  }
+
+  .status-pill .pending-count { color: var(--yellow); }
+  .status-pill .cost-est { color: var(--muted); opacity: 0.6; }
+
+  /* ── Log — alchemical ledger ── */
+  #log {
+    margin-top: 16px;
+    background: linear-gradient(180deg, rgba(4,5,12,0.95) 0%, rgba(9,11,22,0.85) 100%);
+    border: 1px solid var(--border);
+    border-left: 3px solid rgba(196, 144, 96, 0.22);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 16px;
+    height: 248px;
+    overflow-y: auto;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.9;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border2) transparent;
+    box-shadow: inset 2px 0 12px rgba(196, 144, 96, 0.04);
+  }
+
+  #log::-webkit-scrollbar { width: 3px; }
+  #log::-webkit-scrollbar-track { background: transparent; }
+  #log::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  #log .entry {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+  }
+
+  #log .icon {
+    flex-shrink: 0;
+    width: 14px;
+    font-family: var(--serif);
+    font-size: 13px;
+    line-height: 1.4;
+    text-align: center;
+    opacity: 0.85;
+  }
+
+  #log .ok   { color: var(--green); }
+  #log .skip { color: var(--muted); }
+  #log .err  { color: var(--red); }
+  #log .prog { color: var(--accent); opacity: 0.9; }
+  #log .warn { color: var(--yellow); }
+  #log .info { color: var(--purple); opacity: 0.78; }
+
+  /* ── Tally — more presence ── */
+  .tally {
+    display: flex;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    font-family: var(--serif);
+  }
+
+  .tally span {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+    padding-right: 24px;
+    border-right: 1px solid var(--border);
+    margin-right: 24px;
+  }
+
+  .tally span:last-child { border-right: none; margin-right: 0; padding-right: 0; }
+
+  .tally .n   { font-size: 28px; font-weight: 300; line-height: 1; letter-spacing: -1px; }
+  .tally .lbl { color: var(--muted); font-size: 12px; font-style: italic; font-weight: 300; }
+  .tally .ok  .n { color: var(--green); }
+  .tally .sk  .n { color: var(--muted); opacity: 0.7; }
+  .tally .er  .n { color: var(--red); }
+
+  /* ── Warnings — integrated with icon system ── */
+  .warn-box {
+    background: rgba(200, 160, 80, 0.05);
+    border: 1px solid rgba(200, 160, 80, 0.18);
+    border-left: 3px solid rgba(200, 160, 80, 0.35);
+    border-radius: 0 7px 7px 0;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    display: none;
+  }
+
+  .warn-box-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .warn-box-glyph {
+    font-family: var(--serif);
+    font-size: 15px;
+    color: var(--yellow);
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  .warn-box-title {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 13px;
+    color: var(--yellow);
+  }
+
+  .warn-box ul { padding-left: 22px; font-size: 12px; color: var(--yellow); opacity: 0.78; }
+  .warn-box li { margin-top: 2px; font-family: var(--mono); font-size: 11px; }
+
+  /* ── Misc ── */
+  .hint-note {
+    font-style: normal;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+    opacity: 0.55;
+    vertical-align: middle;
+  }
+</style>
+</head>
+<body>
+
+<svg class="bg-sigil" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="200" cy="200" r="190" stroke="#c49060" stroke-width="0.6"/>
+  <circle cx="200" cy="200" r="160" stroke="#c49060" stroke-width="0.4" stroke-dasharray="3 6"/>
+  <circle cx="200" cy="200" r="120" stroke="#c49060" stroke-width="0.5"/>
+  <circle cx="200" cy="200" r="80"  stroke="#c49060" stroke-width="0.4" stroke-dasharray="2 5"/>
+  <circle cx="200" cy="200" r="40"  stroke="#c49060" stroke-width="0.5"/>
+  <line x1="200" y1="10"  x2="200" y2="390" stroke="#c49060" stroke-width="0.4" opacity="0.6"/>
+  <line x1="10"  y1="200" x2="390" y2="200" stroke="#c49060" stroke-width="0.4" opacity="0.6"/>
+  <line x1="66"  y1="66"  x2="334" y2="334" stroke="#c49060" stroke-width="0.3" opacity="0.4"/>
+  <line x1="334" y1="66"  x2="66"  y2="334" stroke="#c49060" stroke-width="0.3" opacity="0.4"/>
+  <polygon points="200,20 373,290 27,290"  stroke="#c49060" stroke-width="0.4" opacity="0.5" fill="none"/>
+  <polygon points="200,380 27,110 373,110" stroke="#c49060" stroke-width="0.4" opacity="0.5" fill="none"/>
+  <circle cx="200" cy="10"  r="3" fill="#c49060" opacity="0.7"/>
+  <circle cx="200" cy="390" r="3" fill="#c49060" opacity="0.7"/>
+  <circle cx="10"  cy="200" r="3" fill="#c49060" opacity="0.7"/>
+  <circle cx="390" cy="200" r="3" fill="#c49060" opacity="0.7"/>
+</svg>
+
+<!-- Crow shape reused across all instances -->
+<svg style="display:none">
+  <symbol id="crow" viewBox="-28 -18 56 36">
+    <path d="M-2-1 C-5-5 -13-8 -20-6 C-15-4 -10-2 -7 0 C-10 2 -15 5 -20 7 C-13 9 -5 5 -2 1Z"/>
+    <path d="M2-1 C5-5 13-8 20-6 C15-4 10-2 7 0 C10 2 15 5 20 7 C13 9 5 5 2 1Z"/>
+    <ellipse cx="0" cy="0" rx="3" ry="5"/>
+    <ellipse cx="0" cy="-7" rx="3" ry="2.5" transform="rotate(-10 0 -7)"/>
+    <path d="M-2-8 L-7-7.5 L-2-6.5Z"/>
+    <path d="M-1.5 5 L0 11 L1.5 5Z"/>
+  </symbol>
+</svg>
+
+<svg class="bg-crow bg-crow-1" viewBox="-28 -18 56 36"><use href="#crow"/></svg>
+<svg class="bg-crow bg-crow-2" viewBox="-28 -18 56 36"><use href="#crow"/></svg>
+<svg class="bg-crow bg-crow-3" viewBox="-28 -18 56 36"><use href="#crow"/></svg>
+
+<div class="app">
+
+  <div class="header">
+    <svg class="header-crow" viewBox="-28 -18 56 36"><use href="#crow"/></svg>
+
+    <div class="header-eyebrow">☿ &nbsp; opus somnium &nbsp; ☿</div>
+    <h1>Conn's Dream Archive</h1>
+    <p class="subtitle">Transcribe, title, and organise audio dreams into your vault.</p>
+    <div class="header-rule">
+      <span class="header-rule-glyphs">✦ ☽ ✦</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="card-glyph">⊕</span> Loci</div>
+    <div class="field">
+      <label>Input folder — where your audio recordings live</label>
+      <div class="folder-row">
+        <input type="text" id="inputDir" placeholder="C:\Users\Conn\Voice Memos" />
+        <button class="btn" onclick="browse('inputDir')">Browse</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Output folder — your Obsidian vault or notes folder</label>
+      <div class="folder-row">
+        <input type="text" id="outputDir" placeholder="C:\Users\Conn\Dreams Vault" />
+        <button class="btn" onclick="browse('outputDir')">Browse</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="card-glyph">☽</span> Optiones</div>
+    <div class="field">
+      <div class="toggle-row" onclick="toggleSummary()">
+        <div class="toggle on" id="summaryToggle"></div>
+        <span class="toggle-label">Generate title &amp; summary</span>
+      </div>
+    </div>
+    <div class="field">
+      <label>Context &amp; hints <span class="hint-note">· saved automatically ·</span></label>
+      <textarea id="hints" placeholder="e.g. Irish names: Conn, Síobhán, Ciarán. Places: Dublin, Wicklow, Galway. Recurring themes: the old house, water, flying. Jungian concepts: shadow, anima, the wise old man..."></textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="card-glyph">☿</span> Opus</div>
+
+    <div id="warnings" class="warn-box">
+      <div class="warn-box-header">
+        <span class="warn-box-glyph">◆</span>
+        <span class="warn-box-title">Unsupported files — will be skipped</span>
+      </div>
+      <ul id="warnList"></ul>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="processBtn" onclick="startProcessing()">Process New Dreams</button>
+      <button class="btn btn-stop" id="stopBtn" onclick="stopProcessing()" style="display:none">Stop</button>
+      <span class="status-pill" id="statusPill"></span>
+    </div>
+
+    <div id="log"><span class="entry info"><span class="icon">✦</span><span>Ready. Set your folders and click Process.</span></span></div>
+
+    <div class="tally" id="tally" style="display:none">
+      <span class="ok"><span class="n" id="tallyOk">0</span><span class="lbl">processed</span></span>
+      <span class="sk"><span class="n" id="tallySkip">0</span><span class="lbl">skipped</span></span>
+      <span class="er"><span class="n" id="tallyErr">0</span><span class="lbl">failed</span></span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let summaryOn = true;
+  let processing = false;
+
+  function save() {
+    localStorage.setItem('inputDir',  el('inputDir').value);
+    localStorage.setItem('outputDir', el('outputDir').value);
+    localStorage.setItem('hints',     el('hints').value);
+    localStorage.setItem('summaryOn', summaryOn);
+  }
+
+  async function load() {
+    const savedInput  = localStorage.getItem('inputDir')  || '';
+    const savedOutput = localStorage.getItem('outputDir') || '';
+    el('inputDir').value  = savedInput;
+    el('outputDir').value = savedOutput;
+    el('hints').value     = localStorage.getItem('hints') || '';
+    summaryOn = localStorage.getItem('summaryOn') !== 'false';
+    el('summaryToggle').className = 'toggle ' + (summaryOn ? 'on' : '');
+
+    if (!savedInput || !savedOutput) {
+      try {
+        const r = await fetch('/api/defaults');
+        const d = await r.json();
+        if (!savedInput  && d.inputDir)  el('inputDir').value  = d.inputDir;
+        if (!savedOutput && d.outputDir) el('outputDir').value = d.outputDir;
+      } catch {}
+    }
+  }
+
+  async function browse(field) {
+    try {
+      const res  = await fetch('/api/browse');
+      const data = await res.json();
+      if (data.path) { el(field).value = data.path; save(); scanPending(); }
+    } catch { log('err', '✕', 'Could not open folder picker'); }
+  }
+
+  function toggleSummary() {
+    summaryOn = !summaryOn;
+    el('summaryToggle').className = 'toggle ' + (summaryOn ? 'on' : '');
+    save();
+  }
+
+  let scanTimer;
+  function scheduleScan() { clearTimeout(scanTimer); scanTimer = setTimeout(scanPending, 600); }
+
+  async function scanPending() {
+    const inputDir  = el('inputDir').value.trim();
+    const outputDir = el('outputDir').value.trim();
+    if (!inputDir) { el('statusPill').innerHTML = ''; return; }
+
+    try {
+      const res  = await fetch(`/api/scan?inputDir=${enc(inputDir)}&outputDir=${enc(outputDir)}`);
+      const data = await res.json();
+
+      const warnBox = el('warnings');
+      if (data.warnings && data.warnings.length) {
+        el('warnList').innerHTML = data.warnings.map(w => `<li>${esc(w)}</li>`).join('');
+        warnBox.style.display = 'block';
+      } else {
+        warnBox.style.display = 'none';
+      }
+
+      if (data.pending === 0) {
+        el('statusPill').innerHTML = '<span style="color:var(--green)">⊕ up to date</span>';
+      } else {
+        const estCost = (data.pending * 0.02).toFixed(2);
+        el('statusPill').innerHTML =
+          `<span class="pending-count">${data.pending} pending</span>` +
+          ` <span class="cost-est">· ~$${estCost}</span>`;
+      }
+    } catch { el('statusPill').innerHTML = ''; }
+  }
+
+  async function startProcessing() {
+    if (processing) return;
+    const inputDir  = el('inputDir').value.trim();
+    const outputDir = el('outputDir').value.trim();
+    if (!inputDir)  { log('err', '✕', 'Set an input folder first'); return; }
+    if (!outputDir) { log('err', '✕', 'Set an output folder first'); return; }
+
+    save();
+    processing = true;
+    el('processBtn').disabled = true;
+    el('stopBtn').style.display = 'inline-block';
+    el('tally').style.display = 'none';
+    clearLog();
+
+    try {
+      const res = await fetch('/api/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          inputDir, outputDir,
+          hints: el('hints').value.trim(),
+          summary: summaryOn,
+        }),
+      });
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const parts = buf.split('\n\n');
+        buf = parts.pop();
+        for (const part of parts) {
+          if (!part.startsWith('data: ')) continue;
+          try {
+            const ev = JSON.parse(part.slice(6));
+            handleEvent(ev);
+            if (ev.type === 'complete') updateTally(ev.processed, ev.skipped, ev.failed);
+          } catch {}
+        }
+      }
+    } catch (e) {
+      log('err', '✕', `Connection error: ${e.message}`);
+    }
+
+    processing = false;
+    el('processBtn').disabled = false;
+    el('stopBtn').style.display = 'none';
+    el('stopBtn').textContent = 'Stop';
+    el('stopBtn').disabled = false;
+    scanPending();
+  }
+
+  function handleEvent(ev) {
+    if (ev.type === 'start')    log('prog', '☿', `${ev.file}`);
+    if (ev.type === 'progress') log('prog', '·', `${ev.file} — ${ev.step}`);
+    if (ev.type === 'done')     log('ok',   '⊕', `${ev.date} — ${ev.title}`);
+    if (ev.type === 'skip')     log('skip', '◇', `${ev.file} — already processed`);
+    if (ev.type === 'error')    log('err',  '✕', `${ev.file}: ${ev.msg}`);
+    if (ev.type === 'stopped')  log('warn', '◆', 'Stopped by user');
+    if (ev.type === 'complete') log('info', '✦', `Done — ${ev.processed} processed, ${ev.skipped} skipped, ${ev.failed} failed`);
+  }
+
+  function updateTally(ok, skip, err) {
+    el('tallyOk').textContent   = ok;
+    el('tallySkip').textContent = skip;
+    el('tallyErr').textContent  = err;
+    el('tally').style.display   = 'flex';
+  }
+
+  async function stopProcessing() {
+    el('stopBtn').textContent = 'Stopping…';
+    el('stopBtn').disabled = true;
+    await fetch('/api/stop', { method: 'POST' }).catch(() => {});
+  }
+
+  function log(cls, icon, msg) {
+    const box = el('log');
+    const line = document.createElement('div');
+    line.className = `entry ${cls}`;
+    line.innerHTML = `<span class="icon">${icon}</span><span>${esc(msg)}</span>`;
+    box.appendChild(line);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function clearLog() { el('log').innerHTML = ''; }
+
+  const el  = (id) => document.getElementById(id);
+  const enc = (s) => encodeURIComponent(s);
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  load().then(scanPending);
+
+  el('inputDir').addEventListener('input',  () => { save(); scheduleScan(); });
+  el('outputDir').addEventListener('input', () => { save(); scheduleScan(); });
+  el('hints').addEventListener('input', save);
+</script>
+</body>
+</html>
