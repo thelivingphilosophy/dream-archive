@@ -466,6 +466,12 @@
     margin-top: 20px;
   }
 
+  .actions-utility {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px dashed rgba(var(--accent-rgb), 0.16);
+  }
+
   .status-pill {
     font-size: 11.5px;
     font-family: var(--mono);
@@ -719,6 +725,10 @@
       <span class="status-pill" id="statusPill"></span>
     </div>
 
+    <div class="actions actions-utility">
+      <button class="btn" id="redateBtn" onclick="redateVault()">☿ Re-date vault from filenames</button>
+    </div>
+
     <div id="log"><span class="entry info"><span class="icon">✦</span><span>Ready. Set your folders and click Process.</span></span></div>
 
     <div class="tally" id="tally" style="display:none">
@@ -869,20 +879,81 @@
 
     processing = false;
     el('processBtn').disabled = false;
+    el('redateBtn').disabled = false;
     el('stopBtn').style.display = 'none';
     el('stopBtn').textContent = 'Stop';
     el('stopBtn').disabled = false;
     scanPending();
   }
 
+  async function redateVault() {
+    if (processing) return;
+    const outputDir = el('outputDir').value.trim();
+    if (!outputDir) { log('err', '✕', 'Set an output (vault) folder first'); return; }
+    if (!confirm('Re-date vault entries from their original audio filenames? This will move and rename .md files and update processed_log.json.')) return;
+
+    save();
+    processing = true;
+    el('processBtn').disabled = true;
+    el('redateBtn').disabled = true;
+    el('stopBtn').style.display = 'inline-block';
+    el('tally').style.display = 'none';
+    clearLog();
+
+    try {
+      const res = await fetch('/api/redate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ outputDir }),
+      });
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const parts = buf.split('\n\n');
+        buf = parts.pop();
+        for (const part of parts) {
+          if (!part.startsWith('data: ')) continue;
+          try {
+            const ev = JSON.parse(part.slice(6));
+            handleEvent(ev);
+          } catch {}
+        }
+      }
+    } catch (e) {
+      log('err', '✕', `Connection error: ${e.message}`);
+    }
+
+    processing = false;
+    el('processBtn').disabled = false;
+    el('redateBtn').disabled = false;
+    el('stopBtn').style.display = 'none';
+    el('stopBtn').textContent = 'Stop';
+    el('stopBtn').disabled = false;
+  }
+
   function handleEvent(ev) {
+    if (ev.type === 'start' && typeof ev.count === 'number') {
+      log('info', '✦', `Scanning ${ev.count} vault entr${ev.count === 1 ? 'y' : 'ies'}…`);
+      return;
+    }
     if (ev.type === 'start')    log('prog', '☿', `${ev.file}`);
     if (ev.type === 'progress') log('prog', '·', `${ev.file} — ${ev.step}`);
     if (ev.type === 'done')     log('ok',   '⊕', `${ev.date} — ${ev.title}`);
-    if (ev.type === 'skip')     log('skip', '◇', `${ev.file} — already processed`);
+    if (ev.type === 'moved')    log('ok',   '⟲', `${ev.file}: ${ev.oldDate} → ${ev.newDate}`);
+    if (ev.type === 'skip')     log('skip', '◇', ev.reason ? `${ev.file} — ${ev.reason}` : `${ev.file} — already processed`);
     if (ev.type === 'error')    log('err',  '✕', `${ev.file}: ${ev.msg}`);
     if (ev.type === 'stopped')  log('warn', '◆', 'Stopped by user');
-    if (ev.type === 'complete') log('info', '✦', `Done — ${ev.processed} processed, ${ev.skipped} skipped, ${ev.failed} failed`);
+    if (ev.type === 'complete') {
+      const moved = typeof ev.moved === 'number' ? `${ev.moved} moved, ` : '';
+      const processed = typeof ev.processed === 'number' ? `${ev.processed} processed, ` : '';
+      log('info', '✦', `Done — ${moved}${processed}${ev.skipped} skipped, ${ev.failed} failed`);
+    }
   }
 
   function updateTally(ok, skip, err) {

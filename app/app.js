@@ -60,6 +60,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET'  && url.pathname === '/api/scan')     return handleScan(res, url);
     if (req.method === 'GET'  && url.pathname === '/api/verify')   return handleVerify(res, url);
     if (req.method === 'POST' && url.pathname === '/api/process')  return handleProcess(req, res);
+    if (req.method === 'POST' && url.pathname === '/api/redate')   return handleRedate(req, res);
     if (req.method === 'POST' && url.pathname === '/api/stop')     return handleStop(res);
     res.writeHead(404); res.end();
   } catch (err) {
@@ -258,7 +259,7 @@ async function handleProcess(req, res) {
     send({ type: 'start', file: name });
 
     try {
-      const date = extractDate(name, stat);
+      const date = await extractDate(name, fullPath, stat);
 
       send({ type: 'progress', file: name, step: 'transcribing...' });
       const transcript = await transcribe(fullPath, ext, hints);
@@ -298,6 +299,132 @@ async function handleProcess(req, res) {
   res.end();
 }
 
+// ─── Re-date vault (SSE stream) ───────────────────────────────────────────────
+async function handleRedate(req, res) {
+  req.on('close', () => { stopFlag = true; });
+
+  const body = JSON.parse(await readBody(req));
+  const { outputDir } = body;
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+  });
+
+  const send = (data) => { try { res.write(`data: ${JSON.stringify(data)}\n\n`); } catch {} };
+
+  stopFlag = false;
+  let moved = 0, skipped = 0, failed = 0;
+
+  const { valid, absPath: absOutput, error } = validateDir(outputDir);
+  if (!valid) {
+    send({ type: 'error', file: '', msg: `Vault folder invalid: ${error}` });
+    send({ type: 'complete', moved: 0, skipped: 0, failed: 1 });
+    return res.end();
+  }
+
+  const log = loadLog(absOutput);
+  const mdFiles = findMdFiles(absOutput);
+  send({ type: 'start', count: mdFiles.length });
+
+  for (const mdPath of mdFiles) {
+    if (stopFlag) { send({ type: 'stopped' }); break; }
+
+    const fileName = path.basename(mdPath);
+    send({ type: 'progress', file: fileName, step: 'checking...' });
+
+    try {
+      const content = fs.readFileSync(mdPath, 'utf8');
+      const fm = parseFrontmatter(content);
+      if (!fm || !fm.source) {
+        skipped++;
+        send({ type: 'skip', file: fileName, reason: 'no source in frontmatter' });
+        continue;
+      }
+
+      const newDate = extractDateFromName(fm.source);
+      if (!newDate) {
+        skipped++;
+        send({ type: 'skip', file: fileName, reason: 'no parseable date in source filename' });
+        continue;
+      }
+
+      const newDateStr = formatDate(newDate);
+      if (fm.date === newDateStr) {
+        skipped++;
+        send({ type: 'skip', file: fileName, reason: 'already correct' });
+        continue;
+      }
+
+      const oldDateStr = fm.date;
+      const title = path.basename(mdPath).replace(/^\d{4}-\d{2}-\d{2} - /, '').replace(/\.md$/, '');
+
+      const year      = String(newDate.getFullYear());
+      const month     = String(newDate.getMonth() + 1).padStart(2, '0');
+      const monthName = MONTHS[newDate.getMonth()];
+      const newFolder = path.join(absOutput, year, `${year}_${month}_${monthName}`);
+      fs.mkdirSync(newFolder, { recursive: true });
+
+      let newFilename = `${newDateStr} - ${title}.md`;
+      let newPath     = path.join(newFolder, newFilename);
+      let n = 2;
+      while (newPath !== mdPath && fs.existsSync(newPath)) {
+        newFilename = `${newDateStr} - ${title} (${n++}).md`;
+        newPath     = path.join(newFolder, newFilename);
+      }
+
+      const newContent = content.replace(`date: ${oldDateStr}`, `date: ${newDateStr}`);
+      const stat = fs.statSync(mdPath);
+      fs.writeFileSync(newPath, newContent, 'utf8');
+      fs.utimesSync(newPath, stat.atime, stat.mtime);
+      if (newPath !== mdPath) fs.unlinkSync(mdPath);
+
+      for (const [key, entry] of Object.entries(log)) {
+        if (!entry.mdPath) continue;
+        const absEntryPath = path.resolve(absOutput, entry.mdPath);
+        if (absEntryPath === mdPath) {
+          log[key].date = newDateStr;
+          log[key].mdPath = path.relative(absOutput, newPath).split(path.sep).join('/');
+        }
+      }
+
+      moved++;
+      send({ type: 'moved', file: fileName, oldDate: oldDateStr, newDate: newDateStr });
+
+    } catch (err) {
+      failed++;
+      send({ type: 'error', file: fileName, msg: err.message });
+    }
+  }
+
+  saveLog(absOutput, log);
+  send({ type: 'complete', moved, skipped, failed });
+  res.end();
+}
+
+function findMdFiles(dir) {
+  const results = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) results.push(...findMdFiles(full));
+    else if (entry.name.endsWith('.md')) results.push(full);
+  }
+  return results;
+}
+
+function parseFrontmatter(content) {
+  const match = content.match(/^---\n([\s\S]*?)\n---/);
+  if (!match) return null;
+  const fm = {};
+  for (const line of match[1].split('\n')) {
+    const i = line.indexOf(':');
+    if (i === -1) continue;
+    fm[line.slice(0, i).trim()] = line.slice(i + 1).trim().replace(/^"|"$/g, '');
+  }
+  return fm;
+}
+
 // ─── Skip logic ───────────────────────────────────────────────────────────────
 function isAlreadyProcessed(log, name, size, inputDir) {
   if (!log[logKey(name, size)]) return false;
@@ -306,30 +433,31 @@ function isAlreadyProcessed(log, name, size, inputDir) {
 }
 
 // ─── Date extraction ──────────────────────────────────────────────────────────
-function extractDate(filename, stat) {
+const MONTH_IDX = {
+  jan:0, feb:1, mar:2, apr:3, may:4, jun:5, jul:6, aug:7, sep:8, oct:9, nov:10, dec:11,
+  // Italian abbreviations
+  gen:0, mag:4, giu:5, lug:6, ago:7, set:8, ott:9, dic:11,
+};
+const MONTH_PAT = Object.keys(MONTH_IDX).join('|');
+
+function extractDateFromName(filename) {
   const iso = filename.match(/(\d{4})[_\-]?(\d{2})[_\-]?(\d{2})/);
   if (iso) {
     const d = new Date(parseInt(iso[1]), parseInt(iso[2]) - 1, parseInt(iso[3]));
     if (!isNaN(d) && d.getFullYear() > 1990 && d.getFullYear() < 2100) return d;
   }
-  const MONTH_IDX = {
-    jan:0, feb:1, mar:2, apr:3, may:4, jun:5, jul:6, aug:7, sep:8, oct:9, nov:10, dec:11,
-    // Italian abbreviations
-    gen:0, mag:4, giu:5, lug:6, ago:7, set:8, ott:9, dic:11,
-  };
-  const monthPat = Object.keys(MONTH_IDX).join('|');
-  let m = filename.match(new RegExp(`(${monthPat})[a-z]*[\\s_\\-]+(\\d{1,2})[\\s_\\-,]+(\\d{4})`, 'i'));
+  let m = filename.match(new RegExp(`(${MONTH_PAT})[a-z]*[\\s_\\-]+(\\d{1,2})[\\s_\\-,]+(\\d{4})`, 'i'));
   if (m) {
     const d = new Date(parseInt(m[3]), MONTH_IDX[m[1].toLowerCase().slice(0,3)], parseInt(m[2]));
     if (!isNaN(d)) return d;
   }
-  m = filename.match(new RegExp(`(\\d{1,2})[\\s_\\-]+(${monthPat})[a-z]*[\\s_\\-]+(\\d{4})`, 'i'));
+  m = filename.match(new RegExp(`(\\d{1,2})[\\s_\\-]+(${MONTH_PAT})[a-z]*[\\s_\\-]+(\\d{4})`, 'i'));
   if (m) {
     const d = new Date(parseInt(m[3]), MONTH_IDX[m[2].toLowerCase().slice(0,3)], parseInt(m[1]));
     if (!isNaN(d)) return d;
   }
   // Day + month only, no year (e.g. "1 Jan, 11.25_" or "18 Mar,")
-  m = filename.match(new RegExp(`(\\d{1,2})[\\s_\\-]+(${monthPat})[a-z]*`, 'i'));
+  m = filename.match(new RegExp(`(\\d{1,2})[\\s_\\-]+(${MONTH_PAT})[a-z]*`, 'i'));
   if (m) {
     const day = parseInt(m[1]);
     const mon = MONTH_IDX[m[2].toLowerCase().slice(0, 3)];
@@ -340,6 +468,42 @@ function extractDate(filename, stat) {
       const d = new Date(year, mon, day);
       if (!isNaN(d)) return d;
     }
+  }
+  return null;
+}
+
+function ffprobeBin() {
+  const local = path.join(__dirname, 'ffprobe');
+  return fs.existsSync(local) ? local : 'ffprobe';
+}
+
+// Reads the m4a/mp4 container's `creation_time` tag (set by the encoder at
+// recording time). Returns null on missing ffprobe, non-zero exit, or
+// unparseable output — caller falls through to stat-based dating.
+function extractDateFromMetadata(filePath) {
+  return new Promise((resolve) => {
+    execFile(
+      ffprobeBin(),
+      ['-v', 'error', '-show_entries', 'format_tags=creation_time', '-of', 'default=nw=1:nk=1', filePath],
+      { timeout: 5_000 },
+      (err, stdout) => {
+        if (err) return resolve(null);
+        const text = (stdout || '').trim();
+        if (!text) return resolve(null);
+        const d = new Date(text);
+        if (isNaN(d) || d.getFullYear() < 1990 || d.getFullYear() > 2100) return resolve(null);
+        resolve(d);
+      }
+    );
+  });
+}
+
+async function extractDate(filename, filePath, stat) {
+  const fromName = extractDateFromName(filename);
+  if (fromName) return fromName;
+  if (filePath) {
+    const fromMeta = await extractDateFromMetadata(filePath);
+    if (fromMeta) return fromMeta;
   }
   return new Date(stat.birthtimeMs || stat.mtimeMs);
 }
