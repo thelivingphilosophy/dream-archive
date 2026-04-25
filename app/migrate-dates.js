@@ -91,9 +91,10 @@ for (const mdPath of mdFiles) {
 
   // Update log entries
   for (const [key, entry] of Object.entries(log)) {
-    if (entry.mdPath === mdPath) {
+    const absEntryPath = path.resolve(VAULT, entry.mdPath);
+    if (absEntryPath === mdPath) {
       log[key].date = newDateStr;
-      log[key].mdPath = newPath;
+      log[key].mdPath = path.relative(VAULT, newPath).split(path.sep).join('/');
     }
   }
 
