@@ -59,6 +59,14 @@ android {
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.14"
     }
+
+    applicationVariants.all {
+        val variant = this
+        outputs.all {
+            (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl)
+                .outputFileName = "DreamArchive-${variant.versionName}.apk"
+        }
+    }
 }
 
 dependencies {
