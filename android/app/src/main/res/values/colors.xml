@@ -1,12 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ink">#1a1a2e</color>
-    <color name="parchment">#f5f1e8</color>
-    <color name="accent">#8b1e3f</color>
-    <color name="accent_pressed">#6b1730</color>
-    <color name="surface">#ffffff</color>
-    <color name="muted">#6b6b7a</color>
-    <color name="idle">#4a4e69</color>
-    <color name="recording">#c53030</color>
-    <color name="uploading">#d69e2e</color>
+    <!-- Alchemical palette — kept in sync with ui/theme/Color.kt for XML consumers (widget, icon, system chrome). -->
+    <color name="bg_void">#09080D</color>
+    <color name="surface1">#0E0D16</color>
+    <color name="surface2">#141220</color>
+    <color name="border1">#1A1828</color>
+    <color name="border2">#222035</color>
+
+    <color name="parchment">#BDB3A0</color>
+    <color name="parchment_bright">#EDE6D8</color>
+    <color name="violet_grey">#7A7494</color>
+
+    <color name="gold_dark">#614A22</color>
+    <color name="gold">#8E6E38</color>
+    <color name="gold_warm">#A8844A</color>
+    <color name="gold_light">#C09A58</color>
+
+    <color name="violet">#6A5898</color>
+    <color name="deep_violet">#160C3C</color>
+
+    <color name="ember">#883050</color>
+    <color name="moss">#52845E</color>
+    <color name="amber">#8A6A2A</color>
+
+    <!-- Legacy aliases (widget drawables still reference these) -->
+    <color name="ink">#0E0D16</color>
+    <color name="accent">#8E6E38</color>
+    <color name="accent_pressed">#614A22</color>
+    <color name="surface">#141220</color>
+    <color name="muted">#7A7494</color>
+    <color name="idle">#8E6E38</color>
+    <color name="recording">#883050</color>
+    <color name="uploading">#A8844A</color>
 </resources>

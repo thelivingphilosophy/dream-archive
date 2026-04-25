@@ -1,12 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <style name="Theme.ConnDreams" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/ink</item>
-        <item name="colorPrimaryVariant">@color/ink</item>
-        <item name="colorOnPrimary">@color/parchment</item>
-        <item name="colorSecondary">@color/accent</item>
-        <item name="colorOnSecondary">@color/parchment</item>
-        <item name="android:statusBarColor" tools:targetApi="l">@color/ink</item>
+    <style name="Theme.ConnDreams" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/bg_void</item>
+        <item name="android:statusBarColor" tools:targetApi="l">@color/bg_void</item>
+        <item name="android:navigationBarColor" tools:targetApi="l">@color/bg_void</item>
     </style>
 
     <style name="Theme.Transparent" parent="Theme.ConnDreams">

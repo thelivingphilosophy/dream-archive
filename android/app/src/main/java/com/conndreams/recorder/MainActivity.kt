@@ -5,35 +5,30 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.widget.Button
-import android.widget.RadioGroup
-import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import com.conndreams.recorder.ui.SettingsCallbacks
+import com.conndreams.recorder.ui.SettingsScreen
+import com.conndreams.recorder.ui.SettingsState
+import com.conndreams.recorder.ui.theme.ConnDreamsTheme
 import com.google.android.gms.auth.UserRecoverableAuthException
 import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.material.switchmaterial.SwitchMaterial
 import kotlinx.coroutines.launch
 import java.io.File
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : ComponentActivity() {
 
     private lateinit var prefs: Prefs
     private lateinit var drive: DriveClient
-
-    private lateinit var driveStatus: TextView
-    private lateinit var folderName: TextView
-    private lateinit var pendingCount: TextView
-    private lateinit var damagedCount: TextView
-    private lateinit var connectButton: Button
-    private lateinit var testRecordButton: Button
-    private lateinit var recordOnLaunchSwitch: SwitchMaterial
-    private lateinit var beepSwitch: SwitchMaterial
-    private lateinit var hapticSwitch: SwitchMaterial
-    private lateinit var maxLengthGroup: RadioGroup
 
     private val signInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         handleSignInResult(result.data)
@@ -51,13 +46,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private var accountEmail by mutableStateOf<String?>(null)
+    private var folderName by mutableStateOf("")
+    private var pendingCount by mutableIntStateOf(0)
+    private var damagedCount by mutableIntStateOf(0)
+    private var isRecording by mutableStateOf(false)
+    private var recordOnLaunch by mutableStateOf(true)
+    private var beepEnabled by mutableStateOf(true)
+    private var hapticEnabled by mutableStateOf(true)
+    private var maxLengthMinutes by mutableIntStateOf(15)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = Prefs(this)
         drive = DriveClient(this)
 
-        // F1: if this is a direct launcher tap (home icon / Samsung Side Key) and the app
-        // is configured, toggle RecordingService — start if idle, stop if already recording.
+        // F1: direct launcher tap (home icon / Samsung Side Key) toggles recording when configured.
         if (shouldToggleRecording(intent)) {
             val action = if (RecordingService.isRunning) RecordingService.ACTION_STOP else RecordingService.ACTION_START
             ContextCompat.startForegroundService(
@@ -68,46 +72,46 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        setContentView(R.layout.activity_main)
+        refresh()
 
-        driveStatus = findViewById(R.id.drive_status)
-        folderName = findViewById(R.id.folder_name)
-        pendingCount = findViewById(R.id.pending_count)
-        damagedCount = findViewById(R.id.damaged_count)
-        connectButton = findViewById(R.id.connect_button)
-        testRecordButton = findViewById(R.id.test_record_button)
-        recordOnLaunchSwitch = findViewById(R.id.record_on_launch_switch)
-        beepSwitch = findViewById(R.id.beep_switch)
-        hapticSwitch = findViewById(R.id.haptic_switch)
-        maxLengthGroup = findViewById(R.id.max_length_group)
-
-        connectButton.setOnClickListener { launchSignIn() }
-        testRecordButton.setOnClickListener { handleTestRecord() }
-
-        recordOnLaunchSwitch.setOnCheckedChangeListener { _, c -> prefs.recordOnLaunch = c }
-        beepSwitch.setOnCheckedChangeListener { _, c -> prefs.beepEnabled = c }
-        hapticSwitch.setOnCheckedChangeListener { _, c -> prefs.hapticEnabled = c }
-        maxLengthGroup.setOnCheckedChangeListener { _, id ->
-            prefs.maxLengthMinutes = when (id) {
-                R.id.max_30 -> 30
-                R.id.max_60 -> 60
-                else -> 15
+        setContent {
+            ConnDreamsTheme {
+                val state = remember(
+                    accountEmail, folderName, pendingCount, damagedCount,
+                    isRecording, recordOnLaunch, beepEnabled, hapticEnabled, maxLengthMinutes,
+                ) {
+                    SettingsState(
+                        accountEmail = accountEmail,
+                        folderName = folderName,
+                        pendingCount = pendingCount,
+                        damagedCount = damagedCount,
+                        isRecording = isRecording,
+                        recordOnLaunch = recordOnLaunch,
+                        beepEnabled = beepEnabled,
+                        hapticEnabled = hapticEnabled,
+                        maxLengthMinutes = maxLengthMinutes,
+                    )
+                }
+                val callbacks = SettingsCallbacks(
+                    onConnect = ::launchSignIn,
+                    onTestRecord = ::handleTestRecord,
+                    onCleanupDamaged = ::cleanupDamaged,
+                    onRecordOnLaunchChange = { v -> prefs.recordOnLaunch = v; recordOnLaunch = v },
+                    onBeepChange = { v -> prefs.beepEnabled = v; beepEnabled = v },
+                    onHapticChange = { v -> prefs.hapticEnabled = v; hapticEnabled = v },
+                    onMaxLengthChange = { v -> prefs.maxLengthMinutes = v; maxLengthMinutes = v },
+                )
+                SettingsScreen(state = state, callbacks = callbacks)
             }
         }
-
-        damagedCount.setOnClickListener { cleanupDamaged() }
 
         val requestingPerms = intent.getBooleanExtra(EXTRA_REQUEST_PERMISSION, false)
         if (requestingPerms) requestRuntimePermissions()
         if (intent.getBooleanExtra(EXTRA_REQUEST_AUTH, false)) launchSignIn()
-        // Opportunistic notification prompt — skip when requestRuntimePermissions already
-        // includes POST_NOTIFICATIONS, else the system launches two prompts back-to-back.
         if (!requestingPerms) maybeRequestNotificationPermission()
     }
 
     private fun shouldToggleRecording(intent: Intent): Boolean {
-        // Shortcut → ACTION_VIEW. Recording notification → no LAUNCHER category.
-        // Only the home-screen icon tap / Samsung Side Key "Open app" fire ACTION_MAIN + CATEGORY_LAUNCHER.
         if (intent.action != Intent.ACTION_MAIN) return false
         if (intent.categories?.contains(Intent.CATEGORY_LAUNCHER) != true) return false
         if (intent.getBooleanExtra(EXTRA_FORCE_SETTINGS, false)) return false
@@ -123,7 +127,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        // MainActivity is singleTask, so a repeat Side Key press lands here instead of onCreate.
         if (shouldToggleRecording(intent)) {
             val action = if (RecordingService.isRunning) RecordingService.ACTION_STOP else RecordingService.ACTION_START
             ContextCompat.startForegroundService(
@@ -136,50 +139,25 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Only refresh if we actually inflated the layout (we may have finished in onCreate).
-        if (isFinishing || !::driveStatus.isInitialized) return
+        if (isFinishing) return
         refresh()
     }
 
     private fun refresh() {
         val account = drive.currentAccount()
-        if (account != null) {
-            driveStatus.text = getString(R.string.drive_connected, account.email ?: "")
-            connectButton.text = getString(R.string.reconnect_drive)
-            folderName.text = "${getString(R.string.drive_folder_label)}: ${prefs.driveFolderName}"
-        } else {
-            driveStatus.setText(R.string.drive_not_connected)
-            connectButton.setText(R.string.connect_drive)
-            folderName.text = ""
-        }
-
-        val pendingDir = File(filesDir, "pending")
-        val pending = pendingDir.listFiles { f -> f.extension == "m4a" }?.size ?: 0
-        if (pending > 0) {
-            pendingCount.visibility = android.view.View.VISIBLE
-            pendingCount.text = getString(R.string.pending_uploads, pending)
-        } else {
-            pendingCount.visibility = android.view.View.GONE
-        }
-
-        val damagedDir = File(filesDir, "damaged")
-        val damaged = damagedDir.listFiles { f -> f.extension == "m4a" }?.size ?: 0
-        if (damaged > 0) {
-            damagedCount.visibility = android.view.View.VISIBLE
-            damagedCount.text = getString(R.string.damaged_files, damaged)
-        } else {
-            damagedCount.visibility = android.view.View.GONE
-        }
-
-        recordOnLaunchSwitch.isChecked = prefs.recordOnLaunch
-        beepSwitch.isChecked = prefs.beepEnabled
-        hapticSwitch.isChecked = prefs.hapticEnabled
-        when (prefs.maxLengthMinutes) {
-            30 -> maxLengthGroup.check(R.id.max_30)
-            60 -> maxLengthGroup.check(R.id.max_60)
-            else -> maxLengthGroup.check(R.id.max_15)
-        }
+        accountEmail = account?.email
+        folderName = prefs.driveFolderName
+        pendingCount = countFiles("pending")
+        damagedCount = countFiles("damaged")
+        isRecording = RecordingService.isRunning
+        recordOnLaunch = prefs.recordOnLaunch
+        beepEnabled = prefs.beepEnabled
+        hapticEnabled = prefs.hapticEnabled
+        maxLengthMinutes = prefs.maxLengthMinutes
     }
+
+    private fun countFiles(subdir: String): Int =
+        File(filesDir, subdir).listFiles { f -> f.extension == "m4a" }?.size ?: 0
 
     private fun launchSignIn() {
         val client = drive.buildSignInClient()
@@ -219,7 +197,7 @@ class MainActivity : AppCompatActivity() {
     private fun handleTestRecord() {
         if (RecordingService.isRunning) {
             startService(Intent(this, RecordingService::class.java).setAction(RecordingService.ACTION_STOP))
-            testRecordButton.setText(R.string.record_test)
+            isRecording = false
             return
         }
         if (!hasRecordAudio()) {
@@ -227,7 +205,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
         ContextCompat.startForegroundService(this, RecordingService.startIntent(this))
-        testRecordButton.setText(R.string.stop_recording)
+        isRecording = true
     }
 
     private fun hasRecordAudio(): Boolean =
