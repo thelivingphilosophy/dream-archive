@@ -43,10 +43,11 @@
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
-            <View
+            <ImageView
                 android:id="@+id/widget_state_dot"
                 android:layout_width="6dp"
                 android:layout_height="6dp"
+                android:contentDescription="@null"
                 android:background="@drawable/widget_state_dot_idle" />
 
             <TextView
