@@ -32,7 +32,7 @@ class Prefs(context: Context) {
         set(v) = sp.edit().putInt(KEY_MAX_LENGTH, v).apply()
 
     var recordOnLaunch: Boolean
-        get() = sp.getBoolean(KEY_RECORD_ON_LAUNCH, true)
+        get() = sp.getBoolean(KEY_RECORD_ON_LAUNCH, false)
         set(v) = sp.edit().putBoolean(KEY_RECORD_ON_LAUNCH, v).apply()
 
     companion object {
