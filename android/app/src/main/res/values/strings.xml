@@ -35,4 +35,8 @@
     <string name="notif_auth_revoked">Google Drive access needed — tap to reconnect</string>
 
     <string name="widget_description">One-tap dream recorder</string>
+    <string name="widget_title">The Dream Archive</string>
+    <string name="widget_state_idle">Tap to record</string>
+    <string name="widget_state_recording">Recording…</string>
+    <string name="widget_state_uploading">Uploading…</string>
 </resources>

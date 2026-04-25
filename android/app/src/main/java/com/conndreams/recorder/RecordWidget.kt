@@ -20,18 +20,18 @@ class RecordWidget : AppWidgetProvider() {
     private fun buildViews(context: Context, state: String): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_record)
 
-        val bgRes = when (state) {
-            RecordingService.STATE_RECORDING -> R.drawable.widget_button_recording
-            RecordingService.STATE_UPLOADING -> R.drawable.widget_button_uploading
-            else -> R.drawable.widget_button_idle
+        val dotRes = when (state) {
+            RecordingService.STATE_RECORDING -> R.drawable.widget_state_dot_recording
+            RecordingService.STATE_UPLOADING -> R.drawable.widget_state_dot_uploading
+            else -> R.drawable.widget_state_dot_idle
         }
-        val iconRes = when (state) {
-            RecordingService.STATE_RECORDING -> R.drawable.ic_stop
-            RecordingService.STATE_UPLOADING -> R.drawable.ic_upload
-            else -> R.drawable.ic_mic
+        val stateRes = when (state) {
+            RecordingService.STATE_RECORDING -> R.string.widget_state_recording
+            RecordingService.STATE_UPLOADING -> R.string.widget_state_uploading
+            else -> R.string.widget_state_idle
         }
-        views.setInt(R.id.widget_button, "setBackgroundResource", bgRes)
-        views.setImageViewResource(R.id.widget_button, iconRes)
+        views.setInt(R.id.widget_state_dot, "setBackgroundResource", dotRes)
+        views.setTextViewText(R.id.widget_state, context.getString(stateRes))
 
         val tapIntent = Intent(context, QuickRecordActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
