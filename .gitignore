@@ -12,6 +12,9 @@ dist/
 # Emulator screenshots
 android/.emu-screenshots/
 
+# Android signing — keystore credentials (keystore itself lives outside repo)
+android/keystore.properties
+
 # Icon experiments
 icon-preview/
 AppIcon_v1_backup.png
