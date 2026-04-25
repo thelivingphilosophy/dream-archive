@@ -1,5 +1,11 @@
 package com.conndreams.recorder.ui
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -38,9 +44,11 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
@@ -274,6 +282,16 @@ private fun StatusChips(pending: Int, damaged: Int, onCleanupDamaged: () -> Unit
 
 @Composable
 private fun RecordButton(isRecording: Boolean, onClick: () -> Unit) {
+    val pulse by rememberInfiniteTransition(label = "rec").animateFloat(
+        initialValue = 0.85f,
+        targetValue = 1.18f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "rec-pulse",
+    )
+
     Button(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -287,7 +305,9 @@ private fun RecordButton(isRecording: Boolean, onClick: () -> Unit) {
         Icon(
             imageVector = if (isRecording) Icons.Outlined.Stop else Icons.Outlined.FiberManualRecord,
             contentDescription = null,
-            modifier = Modifier.size(18.dp),
+            modifier = Modifier
+                .size(18.dp)
+                .scale(if (isRecording) pulse else 1f),
         )
         Spacer(Modifier.width(10.dp))
         Text(
@@ -330,12 +350,20 @@ private fun SideKeyHint() {
         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "Tip — Side Key",
-                style = MaterialTheme.typography.titleMedium,
-                color = GoldLight,
-                fontStyle = FontStyle.Italic,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "☿",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = GoldLight.copy(alpha = 0.85f),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "Tip — Side Key",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = GoldLight,
+                    fontStyle = FontStyle.Italic,
+                )
+            }
             Spacer(Modifier.height(6.dp))
             Text(
                 text = "Settings → Advanced features → Side key → Double press → Open app → The DREAM Archive. Double-press from the lock screen to start a recording.",
