@@ -5,16 +5,40 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.googlefonts.Font
+import androidx.compose.ui.text.googlefonts.GoogleFont
 import androidx.compose.ui.unit.sp
+import com.conndreams.recorder.R
 
-// System fallbacks for now. Cormorant + DM Sans wired via Google Fonts in a follow-up.
-private val Serif = FontFamily.Serif
-private val Sans = FontFamily.Default
-private val Mono = FontFamily.Monospace
+private val provider = GoogleFont.Provider(
+    providerAuthority = "com.google.android.gms.fonts",
+    providerPackage = "com.google.android.gms",
+    certificates = R.array.com_google_android_gms_fonts_certs,
+)
+
+private val cormorant = FontFamily(
+    Font(GoogleFont("Cormorant Garamond"), provider, FontWeight.Light),
+    Font(GoogleFont("Cormorant Garamond"), provider, FontWeight.Light, FontStyle.Italic),
+    Font(GoogleFont("Cormorant Garamond"), provider, FontWeight.Normal),
+    Font(GoogleFont("Cormorant Garamond"), provider, FontWeight.Normal, FontStyle.Italic),
+    Font(GoogleFont("Cormorant Garamond"), provider, FontWeight.SemiBold),
+    Font(GoogleFont("Cormorant Garamond"), provider, FontWeight.SemiBold, FontStyle.Italic),
+)
+
+private val dmSans = FontFamily(
+    Font(GoogleFont("DM Sans"), provider, FontWeight.Light),
+    Font(GoogleFont("DM Sans"), provider, FontWeight.Normal),
+    Font(GoogleFont("DM Sans"), provider, FontWeight.Medium),
+)
+
+private val dmMono = FontFamily(
+    Font(GoogleFont("DM Mono"), provider, FontWeight.Normal),
+    Font(GoogleFont("DM Mono"), provider, FontWeight.Medium),
+)
 
 val ConnDreamsTypography = Typography(
     displayLarge = TextStyle(
-        fontFamily = Serif,
+        fontFamily = cormorant,
         fontWeight = FontWeight.Light,
         fontStyle = FontStyle.Italic,
         fontSize = 44.sp,
@@ -22,68 +46,68 @@ val ConnDreamsTypography = Typography(
         letterSpacing = 0.sp,
     ),
     displayMedium = TextStyle(
-        fontFamily = Serif,
+        fontFamily = cormorant,
         fontWeight = FontWeight.Light,
         fontStyle = FontStyle.Italic,
         fontSize = 32.sp,
         lineHeight = 40.sp,
     ),
     headlineLarge = TextStyle(
-        fontFamily = Serif,
+        fontFamily = cormorant,
         fontWeight = FontWeight.Normal,
         fontSize = 28.sp,
         lineHeight = 34.sp,
         letterSpacing = 0.5.sp,
     ),
     headlineMedium = TextStyle(
-        fontFamily = Serif,
+        fontFamily = cormorant,
         fontWeight = FontWeight.Normal,
         fontSize = 22.sp,
         lineHeight = 28.sp,
     ),
     titleLarge = TextStyle(
-        fontFamily = Sans,
+        fontFamily = dmSans,
         fontWeight = FontWeight.Medium,
         fontSize = 18.sp,
         lineHeight = 24.sp,
         letterSpacing = 0.15.sp,
     ),
     titleMedium = TextStyle(
-        fontFamily = Sans,
+        fontFamily = dmSans,
         fontWeight = FontWeight.Medium,
         fontSize = 15.sp,
         lineHeight = 20.sp,
         letterSpacing = 0.15.sp,
     ),
     bodyLarge = TextStyle(
-        fontFamily = Sans,
+        fontFamily = dmSans,
         fontWeight = FontWeight.Normal,
         fontSize = 15.sp,
         lineHeight = 22.sp,
         letterSpacing = 0.25.sp,
     ),
     bodyMedium = TextStyle(
-        fontFamily = Sans,
+        fontFamily = dmSans,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
         lineHeight = 20.sp,
         letterSpacing = 0.25.sp,
     ),
     bodySmall = TextStyle(
-        fontFamily = Sans,
+        fontFamily = dmSans,
         fontWeight = FontWeight.Normal,
         fontSize = 12.sp,
         lineHeight = 16.sp,
         letterSpacing = 0.4.sp,
     ),
     labelLarge = TextStyle(
-        fontFamily = Sans,
+        fontFamily = dmSans,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
         letterSpacing = 0.5.sp,
     ),
     labelMedium = TextStyle(
-        fontFamily = Mono,
+        fontFamily = dmMono,
         fontWeight = FontWeight.Normal,
         fontSize = 12.sp,
         letterSpacing = 0.5.sp,
