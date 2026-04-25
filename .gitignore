@@ -9,6 +9,9 @@ dist/
 # Local Claude Code settings
 .claude/settings.local.json
 
+# Emulator screenshots
+android/.emu-screenshots/
+
 # Icon experiments
 icon-preview/
 AppIcon_v1_backup.png
