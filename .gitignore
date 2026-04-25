@@ -1,7 +1,17 @@
 app/.env
-Dreams/Audio Recordings/
+Dreams/
 node_modules/
 *.icns
 Dream Archive.app/
 build/
 dist/
+
+# Local Claude Code settings
+.claude/settings.local.json
+
+# Icon experiments
+icon-preview/
+AppIcon_v1_backup.png
+AppIcon_bolder.png
+AppIcon_thick.png
+AppIcon_full.png
