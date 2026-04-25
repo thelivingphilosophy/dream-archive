@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="1024" height="1024">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="50%" r="70%">
+      <stop offset="0%"   stop-color="#2e1870"/>
+      <stop offset="55%"  stop-color="#160c3c"/>
+      <stop offset="100%" stop-color="#06082a"/>
+    </radialGradient>
+    <radialGradient id="cg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#fffce8" stop-opacity="1"/>
+      <stop offset="18%"  stop-color="#ffe8a0" stop-opacity="0.8"/>
+      <stop offset="45%"  stop-color="#c49030" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#c49030" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="ag" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#6030d0" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#6030d0" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="gf" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="8"/>
+    </filter>
+    <filter id="cf" x="-200%" y="-200%" width="500%" height="500%">
+      <feGaussianBlur stdDeviation="4"/>
+    </filter>
+    <clipPath id="oc">
+      <circle cx="256" cy="256" r="221"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+
+  <!-- Ambient glow -->
+  <circle cx="256" cy="256" r="240" fill="url(#ag)"/>
+
+  <!-- Center halo -->
+  <circle cx="256" cy="256" r="90" fill="url(#cg)" filter="url(#gf)" opacity="0.6"/>
+
+  <!-- Outer circle r=222 -->
+  <circle cx="256" cy="256" r="222" fill="none" stroke="#d4aa48" stroke-width="2.5" opacity="0.82"/>
+
+  <!-- Mid ring r=155 -->
+  <circle cx="256" cy="256" r="155" fill="none" stroke="#c49840" stroke-width="1.8" opacity="0.65"/>
+
+  <!-- Small inner circle r=72 -->
+  <circle cx="256" cy="256" r="72"  fill="none" stroke="#d4aa48" stroke-width="2" opacity="0.75"/>
+
+  <!-- Cardinal cross — clipped -->
+  <g clip-path="url(#oc)">
+    <line x1="34"  y1="256" x2="478" y2="256" stroke="#ffffff" stroke-width="1.8" opacity="0.5"/>
+    <line x1="256" y1="34"  x2="256" y2="478" stroke="#ffffff" stroke-width="1.8" opacity="0.5"/>
+  </g>
+
+  <!-- Diagonal cross — clipped -->
+  <g clip-path="url(#oc)">
+    <line x1="34"  y1="34"  x2="478" y2="478" stroke="#c49840" stroke-width="1.4" opacity="0.55"/>
+    <line x1="478" y1="34"  x2="34"  y2="478" stroke="#c49840" stroke-width="1.4" opacity="0.55"/>
+  </g>
+
+  <!-- Star — upward triangle -->
+  <polygon points="256,34 65,367 447,367"
+    fill="none" stroke="#f0cc58" stroke-width="3" stroke-linejoin="round" opacity="1"/>
+  <!-- Star — downward triangle -->
+  <polygon points="256,478 65,145 447,145"
+    fill="none" stroke="#f0cc58" stroke-width="3" stroke-linejoin="round" opacity="1"/>
+
+  <!-- Inner radar arcs -->
+  <path d="M 194,256 A 62,62 0 0,0 318,256" fill="none" stroke="#c49840" stroke-width="1.5" opacity="0.65"/>
+  <path d="M 302,256 A 46,46 0 0,1 210,256" fill="none" stroke="#c49840" stroke-width="1.4" opacity="0.6"/>
+  <path d="M 226,256 A 30,30 0 0,0 286,256" fill="none" stroke="#c49840" stroke-width="1.3" opacity="0.55"/>
+
+  <!-- Outer sector arcs -->
+  <path d="M 298,67  A 195,195 0 0,1 445,298" fill="none" stroke="#c49840" stroke-width="1.4" opacity="0.5"/>
+  <path d="M 445,214 A 195,195 0 0,1 298,445" fill="none" stroke="#c49840" stroke-width="1.4" opacity="0.5"/>
+  <path d="M 214,445 A 195,195 0 0,1 67,214"  fill="none" stroke="#c49840" stroke-width="1.4" opacity="0.5"/>
+  <path d="M 67,298  A 195,195 0 0,1 214,67"  fill="none" stroke="#c49840" stroke-width="1.4" opacity="0.5"/>
+
+  <!-- Cardinal dots N S E W -->
+  <circle cx="256" cy="34"  r="7" fill="#ffffff" opacity="1"/>
+  <circle cx="256" cy="478" r="7" fill="#ffffff" opacity="1"/>
+  <circle cx="478" cy="256" r="7" fill="#ffffff" opacity="1"/>
+  <circle cx="34"  cy="256" r="7" fill="#ffffff" opacity="1"/>
+
+  <!-- Center glow -->
+  <circle cx="256" cy="256" r="40" fill="url(#cg)" opacity="0.75"/>
+  <circle cx="256" cy="256" r="10" fill="#fffce8" filter="url(#cf)" opacity="0.9"/>
+  <circle cx="256" cy="256" r="5"  fill="#ffffff"/>
+</svg>
