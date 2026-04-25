@@ -110,7 +110,7 @@ class RecordingService : Service() {
         cues.start()
         mainHandler.post(tickRunnable)
         mainHandler.postDelayed(maxDurationRunnable, (maxMs + 2_000).toLong())
-        RecordWidget.notifyStateChanged(this, STATE_RECORDING)
+        RecordWidget.refresh(this)
     }
 
     private fun stopRecording(reason: String) {
@@ -143,16 +143,14 @@ class RecordingService : Service() {
             if (savedOk && file.length() > 1024) {
                 cues.stop()
                 enqueueUpload(file)
-                RecordWidget.notifyStateChanged(this, STATE_UPLOADING)
             } else {
                 cues.error()
                 quarantine(file)
-                RecordWidget.notifyStateChanged(this, STATE_IDLE)
             }
         } else {
             cues.stop()
-            RecordWidget.notifyStateChanged(this, STATE_IDLE)
         }
+        RecordWidget.refresh(this)
 
         stopForegroundAndSelf()
     }

@@ -16,6 +16,14 @@ class DriveUploadWorker(context: Context, params: WorkerParameters) :
     CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
+        return try {
+            doUpload()
+        } finally {
+            RecordWidget.refresh(applicationContext)
+        }
+    }
+
+    private suspend fun doUpload(): Result {
         val path = inputData.getString(KEY_FILE_PATH) ?: return Result.failure()
         val file = File(path)
         if (!file.exists()) return Result.success()
@@ -55,17 +63,7 @@ class DriveUploadWorker(context: Context, params: WorkerParameters) :
 
         file.delete()
         notifyDone()
-        notifyWidgetOfQueueState()
         return Result.success()
-    }
-
-    private fun notifyWidgetOfQueueState() {
-        val pending = File(applicationContext.filesDir, "pending")
-        val stillHasFiles = pending.listFiles()?.any { it.extension == "m4a" } ?: false
-        val state = if (stillHasFiles || RecordingService.isRunning) {
-            if (RecordingService.isRunning) RecordingService.STATE_RECORDING else RecordingService.STATE_UPLOADING
-        } else RecordingService.STATE_IDLE
-        RecordWidget.notifyStateChanged(applicationContext, state)
     }
 
     private fun notifyDone() {

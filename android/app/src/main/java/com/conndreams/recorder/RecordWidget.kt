@@ -7,11 +7,12 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
+import java.io.File
 
 class RecordWidget : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
-        val state = if (RecordingService.isRunning) RecordingService.STATE_RECORDING else RecordingService.STATE_IDLE
+        val state = currentState(context)
         for (id in appWidgetIds) {
             appWidgetManager.updateAppWidget(id, buildViews(context, state))
         }
@@ -45,6 +46,14 @@ class RecordWidget : AppWidgetProvider() {
 
     companion object {
         /**
+         * Single source of truth: derive widget state from the foreground service flag and
+         * whether anything is queued for upload. Call this from any state-mutating path.
+         */
+        fun refresh(context: Context) {
+            notifyStateChanged(context, currentState(context))
+        }
+
+        /**
          * Push a fresh set of RemoteViews to every live widget instance — call this from
          * service/worker code on state transitions. Cheaper and more reliable than broadcasting.
          */
@@ -56,6 +65,13 @@ class RecordWidget : AppWidgetProvider() {
             for (id in ids) {
                 mgr.updateAppWidget(id, provider.buildViews(context, state))
             }
+        }
+
+        private fun currentState(context: Context): String {
+            if (RecordingService.isRunning) return RecordingService.STATE_RECORDING
+            val pending = File(context.filesDir, "pending")
+            val hasQueue = pending.listFiles { f -> f.extension == "m4a" }?.isNotEmpty() == true
+            return if (hasQueue) RecordingService.STATE_UPLOADING else RecordingService.STATE_IDLE
         }
     }
 }
