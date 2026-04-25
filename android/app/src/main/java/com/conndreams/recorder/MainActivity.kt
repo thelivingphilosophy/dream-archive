@@ -3,21 +3,31 @@ package com.conndreams.recorder
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import com.conndreams.recorder.ui.HomeCallbacks
+import com.conndreams.recorder.ui.HomeScreen
+import com.conndreams.recorder.ui.HomeState
 import com.conndreams.recorder.ui.SettingsCallbacks
-import com.conndreams.recorder.ui.SettingsScreen
+import com.conndreams.recorder.ui.SettingsSheet
 import com.conndreams.recorder.ui.SettingsState
 import com.conndreams.recorder.ui.theme.ConnDreamsTheme
 import com.google.android.gms.auth.UserRecoverableAuthException
@@ -48,6 +58,7 @@ class MainActivity : ComponentActivity() {
 
     private var accountEmail by mutableStateOf<String?>(null)
     private var folderName by mutableStateOf("")
+    private var driveFolderId by mutableStateOf<String?>(null)
     private var pendingCount by mutableIntStateOf(0)
     private var damagedCount by mutableIntStateOf(0)
     private var isRecording by mutableStateOf(false)
@@ -55,6 +66,8 @@ class MainActivity : ComponentActivity() {
     private var beepEnabled by mutableStateOf(true)
     private var hapticEnabled by mutableStateOf(true)
     private var maxLengthMinutes by mutableIntStateOf(15)
+
+    private var showSettings by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -76,32 +89,56 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             ConnDreamsTheme {
-                val state = remember(
-                    accountEmail, folderName, pendingCount, damagedCount,
-                    isRecording, recordOnLaunch, beepEnabled, hapticEnabled, maxLengthMinutes,
-                ) {
-                    SettingsState(
-                        accountEmail = accountEmail,
-                        folderName = folderName,
-                        pendingCount = pendingCount,
-                        damagedCount = damagedCount,
-                        isRecording = isRecording,
-                        recordOnLaunch = recordOnLaunch,
-                        beepEnabled = beepEnabled,
-                        hapticEnabled = hapticEnabled,
-                        maxLengthMinutes = maxLengthMinutes,
-                    )
+                BackHandler(enabled = showSettings) { showSettings = false }
+                AnimatedContent(
+                    targetState = showSettings,
+                    transitionSpec = {
+                        if (targetState) {
+                            (slideInVertically { it / 8 } + fadeIn()) togetherWith fadeOut()
+                        } else {
+                            fadeIn() togetherWith (slideOutVertically { it / 8 } + fadeOut())
+                        }
+                    },
+                    label = "screen",
+                ) { showingSettings ->
+                    if (showingSettings) {
+                        SettingsSheet(
+                            state = SettingsState(
+                                accountEmail = accountEmail,
+                                recordOnLaunch = recordOnLaunch,
+                                beepEnabled = beepEnabled,
+                                hapticEnabled = hapticEnabled,
+                                maxLengthMinutes = maxLengthMinutes,
+                            ),
+                            callbacks = SettingsCallbacks(
+                                onClose = { showSettings = false },
+                                onSwitchAccount = ::launchSignIn,
+                                onRecordOnLaunchChange = { v -> prefs.recordOnLaunch = v; recordOnLaunch = v },
+                                onBeepChange = { v -> prefs.beepEnabled = v; beepEnabled = v },
+                                onHapticChange = { v -> prefs.hapticEnabled = v; hapticEnabled = v },
+                                onMaxLengthChange = { v -> prefs.maxLengthMinutes = v; maxLengthMinutes = v },
+                            ),
+                        )
+                    } else {
+                        HomeScreen(
+                            state = HomeState(
+                                accountEmail = accountEmail,
+                                folderName = folderName,
+                                driveFolderId = driveFolderId,
+                                pendingCount = pendingCount,
+                                damagedCount = damagedCount,
+                                isRecording = isRecording,
+                            ),
+                            callbacks = HomeCallbacks(
+                                onConnect = ::launchSignIn,
+                                onTestRecord = ::handleTestRecord,
+                                onOpenDriveFolder = ::openDriveFolder,
+                                onCleanupDamaged = ::cleanupDamaged,
+                                onOpenSettings = { showSettings = true },
+                            ),
+                        )
+                    }
                 }
-                val callbacks = SettingsCallbacks(
-                    onConnect = ::launchSignIn,
-                    onTestRecord = ::handleTestRecord,
-                    onCleanupDamaged = ::cleanupDamaged,
-                    onRecordOnLaunchChange = { v -> prefs.recordOnLaunch = v; recordOnLaunch = v },
-                    onBeepChange = { v -> prefs.beepEnabled = v; beepEnabled = v },
-                    onHapticChange = { v -> prefs.hapticEnabled = v; hapticEnabled = v },
-                    onMaxLengthChange = { v -> prefs.maxLengthMinutes = v; maxLengthMinutes = v },
-                )
-                SettingsScreen(state = state, callbacks = callbacks)
             }
         }
 
@@ -147,6 +184,7 @@ class MainActivity : ComponentActivity() {
         val account = drive.currentAccount()
         accountEmail = account?.email
         folderName = prefs.driveFolderName
+        driveFolderId = prefs.driveFolderId
         pendingCount = countFiles("pending")
         damagedCount = countFiles("damaged")
         isRecording = RecordingService.isRunning
@@ -206,6 +244,16 @@ class MainActivity : ComponentActivity() {
         }
         ContextCompat.startForegroundService(this, RecordingService.startIntent(this))
         isRecording = true
+    }
+
+    private fun openDriveFolder() {
+        val id = driveFolderId ?: return
+        val uri = Uri.parse("https://drive.google.com/drive/folders/$id")
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, uri))
+        } catch (e: Exception) {
+            Toast.makeText(this, "Could not open Drive folder.", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun hasRecordAudio(): Boolean =
