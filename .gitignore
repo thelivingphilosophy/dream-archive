@@ -21,3 +21,7 @@ AppIcon_v1_backup.png
 AppIcon_bolder.png
 AppIcon_thick.png
 AppIcon_full.png
+
+# Local distribution artifacts
+*.zip
+DreamArchive-for-Conn/
