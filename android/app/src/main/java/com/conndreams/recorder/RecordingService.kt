@@ -196,7 +196,7 @@ class RecordingService : Service() {
 
     private fun acquireWakeLock() {
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
-        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "ConnDreams:recording").apply {
+        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "DreamArchive:recording").apply {
             setReferenceCounted(false)
             acquire(16 * 60_000L)
         }

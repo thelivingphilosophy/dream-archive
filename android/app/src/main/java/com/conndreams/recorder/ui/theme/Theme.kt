@@ -39,7 +39,7 @@ private val AlchemyDark = darkColorScheme(
 )
 
 @Composable
-fun ConnDreamsTheme(content: @Composable () -> Unit) {
+fun DreamArchiveTheme(content: @Composable () -> Unit) {
     val colorScheme = AlchemyDark
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -54,7 +54,7 @@ fun ConnDreamsTheme(content: @Composable () -> Unit) {
     }
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = ConnDreamsTypography,
+        typography = DreamArchiveTypography,
         content = content,
     )
 }

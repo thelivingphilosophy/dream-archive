@@ -43,6 +43,6 @@ class Prefs(context: Context) {
         private const val KEY_HAPTIC = "haptic_enabled"
         private const val KEY_MAX_LENGTH = "max_length_minutes"
         private const val KEY_RECORD_ON_LAUNCH = "record_on_launch"
-        const val DEFAULT_FOLDER_NAME = "Conn Dreams — Audio Recordings"
+        const val DEFAULT_FOLDER_NAME = "Dream Archive — Audio Recordings"
     }
 }

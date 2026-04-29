@@ -7,7 +7,7 @@
     <string name="drive_not_connected">Not connected</string>
     <string name="drive_connected">Signed in as %1$s</string>
     <string name="drive_folder_label">Drive folder</string>
-    <string name="drive_folder_default">Conn Dreams — Audio Recordings</string>
+    <string name="drive_folder_default">Dream Archive — Audio Recordings</string>
     <string name="pending_uploads">%1$d recording(s) waiting to upload</string>
     <string name="damaged_files">%1$d damaged recording(s) — tap to clean up</string>
     <string name="record_test">Record a test dream</string>
@@ -18,11 +18,11 @@
     <string name="max_length_15">15 minutes</string>
     <string name="max_length_30">30 minutes</string>
     <string name="max_length_60">60 minutes</string>
-    <string name="side_key_hint">Tip: Settings → Advanced features → Side key → Double press → Open app → Conn Dreams. Double-press to start a recording from the lock screen.</string>
+    <string name="side_key_hint">Tip: Settings → Advanced features → Side key → Double press → Open app → Dream Archive. Double-press to start a recording from the lock screen.</string>
     <string name="record_on_launch">Record when app opens</string>
     <string name="record_on_launch_hint">With this on, opening the app (via Side Key or tapping the icon) immediately starts a recording. Long-press the icon and tap "Settings" to access this screen without recording.</string>
     <string name="shortcut_settings_short">Settings</string>
-    <string name="shortcut_settings_long">Open Conn Dreams settings</string>
+    <string name="shortcut_settings_long">Open Dream Archive settings</string>
 
     <string name="notif_channel_recording">Recording</string>
     <string name="notif_channel_upload">Upload</string>

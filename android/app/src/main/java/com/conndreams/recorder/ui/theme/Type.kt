@@ -36,7 +36,7 @@ private val dmMono = FontFamily(
     Font(GoogleFont("DM Mono"), provider, FontWeight.Medium),
 )
 
-val ConnDreamsTypography = Typography(
+val DreamArchiveTypography = Typography(
     displayLarge = TextStyle(
         fontFamily = cormorant,
         fontWeight = FontWeight.Light,

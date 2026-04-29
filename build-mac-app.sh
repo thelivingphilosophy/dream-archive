@@ -22,7 +22,7 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << 'PLIST'
   <key>CFBundleExecutable</key>
   <string>launcher</string>
   <key>CFBundleIdentifier</key>
-  <string>com.conndreams.dreamarchive</string>
+  <string>com.dreamarchive.app</string>
   <key>CFBundleName</key>
   <string>Dream Archive</string>
   <key>CFBundleDisplayName</key>
@@ -353,10 +353,10 @@ xattr -cr "$APP_BUNDLE" 2>/dev/null || true
 echo ""
 echo "Done! Created: $APP_BUNDLE"
 echo ""
-echo "To send to Conn:"
+echo "To distribute:"
 echo "  - Copy 'Dream Archive.app' via USB or AirDrop to his Mac"
 echo "  - Tell him: move it out of Downloads first, then right-click → Open (once)"
 echo "  - After that: double-click works forever"
 echo ""
-echo "If quarantine is re-added after transfer, run on Conn's Mac:"
+echo "If quarantine is re-added after transfer, run on the recipient's Mac:"
 echo "  xattr -rd com.apple.quarantine ~/Desktop/Dream\\ Archive.app"

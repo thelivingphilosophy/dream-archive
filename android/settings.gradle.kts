@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ConnDreams"
+rootProject.name = "DreamArchive"
 include(":app")

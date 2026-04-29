@@ -677,7 +677,7 @@ server.on('error', (err) => {
 });
 
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`\n  🌙  Conn's Dream Archive\n  http://localhost:${PORT}\n`);
+  console.log(`\n  🌙  Dream Archive\n  http://localhost:${PORT}\n`);
   if (!process.env.ELECTRON_RUN) console.log('  Close this window to stop the server.\n');
   if (process.env.ELECTRON_RUN) process.emit('server-ready');
 });

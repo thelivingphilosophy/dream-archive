@@ -29,7 +29,7 @@ import com.conndreams.recorder.ui.HomeState
 import com.conndreams.recorder.ui.SettingsCallbacks
 import com.conndreams.recorder.ui.SettingsSheet
 import com.conndreams.recorder.ui.SettingsState
-import com.conndreams.recorder.ui.theme.ConnDreamsTheme
+import com.conndreams.recorder.ui.theme.DreamArchiveTheme
 import com.google.android.gms.auth.UserRecoverableAuthException
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import kotlinx.coroutines.launch
@@ -88,7 +88,7 @@ class MainActivity : ComponentActivity() {
         refresh()
 
         setContent {
-            ConnDreamsTheme {
+            DreamArchiveTheme {
                 BackHandler(enabled = showSettings) { showSettings = false }
                 AnimatedContent(
                     targetState = showSettings,

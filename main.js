@@ -56,7 +56,7 @@ function startServer() {
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 780, height: 820, minWidth: 600, minHeight: 600,
-    title: "Conn's Dream Archive",
+    title: "Dream Archive",
     backgroundColor: '#09080d',
     webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
   });
