@@ -10,7 +10,7 @@ Grab the installer for your platform from the [latest release](../../releases/la
 
 - **Windows** — `Dream Archive Setup x.y.z.exe` (NSIS installer; unsigned, so SmartScreen will warn on first launch — click *More info → Run anyway*)
 - **macOS** — `Dream Archive-x.y.z.dmg` (signed and notarized)
-- **Android** — `DreamArchive-x.y.z.apk` (sideload — see the [Android section](#android-companion-optional))
+- **Android** — `DreamArchive-x.y.z.apk` (sideload — see [INSTALL.md](INSTALL.md) for the setup walkthrough)
 
 ### Prerequisites
 
