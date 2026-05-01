@@ -1,0 +1,47 @@
+name: Submit DMG for Notarization
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_run_id:
+        description: 'GitHub Actions run ID that produced the DMG artifact'
+        required: true
+
+jobs:
+  submit:
+    runs-on: macos-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Download DMG artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: DreamArchive
+          run-id: ${{ github.event.inputs.build_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Submit DMG to Apple notarization (no-wait)
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_PASS: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          DMG=$(ls *.dmg | head -1)
+          echo "Submitting $DMG…"
+          OUT=$(xcrun notarytool submit "$DMG" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASS" \
+            --team-id "$APPLE_TEAM_ID" \
+            --output-format json)
+          echo "$OUT"
+          ID=$(echo "$OUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+          echo ""
+          echo "=================================================="
+          echo "Submission ID: $ID"
+          echo "DMG file:      $DMG"
+          echo "Build run ID:  ${{ github.event.inputs.build_run_id }}"
+          echo "=================================================="
+          echo "Once Apple accepts (can take hours to a day), run:"
+          echo "  gh workflow run check-and-staple.yml \\"
+          echo "    -f submission_id=$ID \\"
+          echo "    -f build_run_id=${{ github.event.inputs.build_run_id }}"
